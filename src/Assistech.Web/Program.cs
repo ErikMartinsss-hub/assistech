@@ -76,8 +76,23 @@ app.UseForwardedHeaders();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    app.UseHttpsRedirection();
     app.UseHsts();
+
+    // Atrás de um proxy que termina o TLS (Render, Azure, Nginx), o
+    // UseHttpsRedirection não descobre a porta HTTPS e loga
+    // "Failed to determine the https port" toda requisição. Como os
+    // forwarded headers já Configure, IsHttps reflete o protocolo real.
+    app.Use(async (contexto, proximo) =>
+    {
+        if (!contexto.Request.IsHttps)
+        {
+            var alvo = $"{contexto.Request.Scheme}://{contexto.Request.Host}{contexto.Request.PathBase}{contexto.Request.Path}{contexto.Request.QueryString}";
+            contexto.Response.Redirect($"https://{alvo.Split("://", 2)[1]}");
+            return;
+        }
+
+        await proximo();
+    });
 }
 
 app.UseStatusCodePagesWithReExecute("/nao-encontrado");

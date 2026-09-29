@@ -1,40 +1,53 @@
-using System.Security.Claims;
-using Assistech.Web.Services;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server;
 
 namespace Assistech.Web.Services;
 
 /// <summary>
-/// Traduz o <see cref="SessaoState"/> para o modelo de autorizacao do Blazor.
-/// Nenhum token trafega para o navegador.
+/// Decorador do provedor do servidor: mantem a sessao da UI em sincronia com
+/// o cookie, que e a fonte da verdade. Sem isso, o AuthorizeRouteView usaria
+/// apenas a memoria do circuito e um F5 deslogaria o usuario.
 /// </summary>
-public sealed class AppAuthenticationStateProvider : AuthenticationStateProvider
+public sealed class AppAuthenticationStateProvider : AuthenticationStateProvider, IHostEnvironmentAuthenticationStateProvider
 {
+    private readonly ServerAuthenticationStateProvider _interno;
     private readonly SessaoState _sessao;
 
-    public AppAuthenticationStateProvider(SessaoState sessao)
+    public AppAuthenticationStateProvider(ServerAuthenticationStateProvider interno, SessaoState sessao)
     {
+        _interno = interno;
         _sessao = sessao;
-        _sessao.Alterada += Notificar;
     }
 
+    /// <summary>
+    /// No prerender o cookie esta no HttpContext e o provedor do servidor ainda
+    /// nao foi inicializado - por isso a sessao tem prioridade sobre ele.
+    /// </summary>
     public override Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        var atual = _sessao.Atual;
+        if (_sessao.Atual is { } sessao)
+            return Task.FromResult(new AuthenticationState(SessaoCookie.CriarTicket(sessao).Principal));
 
-        if (atual is null)
-            return Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())));
-
-        var identidade = new ClaimsIdentity(
-        [
-            new Claim(ClaimTypes.NameIdentifier, atual.UsuarioId.ToString()),
-            new Claim(ClaimTypes.Name, atual.Nome),
-            new Claim(ClaimTypes.Email, atual.Email),
-            new Claim(ClaimTypes.Role, atual.Perfil)
-        ], "assistech");
-
-        return Task.FromResult(new AuthenticationState(new ClaimsPrincipal(identidade)));
+        return _interno.GetAuthenticationStateAsync();
     }
 
-    private void Notificar() => NotifyAuthenticationStateChanged(Task.FromResult(GetAuthenticationStateAsync().Result));
+    public void SetAuthenticationState(Task<AuthenticationState> tarefa)
+    {
+        _interno.SetAuthenticationState(tarefa);
+        _ = SincronizarAsync(tarefa);
+    }
+
+    private async Task SincronizarAsync(Task<AuthenticationState> tarefa)
+    {
+        try
+        {
+            var sessao = SessaoCookie.LerPrincipal((await tarefa).User);
+            if (sessao?.Token == _sessao.Atual?.Token) return;
+            _sessao.Sincronizar(sessao);
+        }
+        catch (Exception)
+        {
+            // Sem principal: mantem a sessao atual.
+        }
+    }
 }

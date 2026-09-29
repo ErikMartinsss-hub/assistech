@@ -38,31 +38,38 @@ public sealed class HttpAssistechApi : IAssistechApi
 
     private readonly HttpClient _http;
     private readonly Action<SessaoDto?>? _onSessaoAlterada;
+    private readonly Func<SessaoDto?>? _sessaoProvider;
 
     public SessaoDto? Sessao { get; private set; }
 
-    public HttpAssistechApi(HttpClient http, Action<SessaoDto?>? onSessaoAlterada = null)
+    public HttpAssistechApi(HttpClient http, Action<SessaoDto?>? onSessaoAlterada = null, Func<SessaoDto?>? sessaoProvider = null)
     {
         _http = http;
         _onSessaoAlterada = onSessaoAlterada;
+        _sessaoProvider = sessaoProvider;
         _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     }
 
     public void RestaurarSessao(SessaoDto sessao) => Sessao = sessao;
+
+    /// <summary>Sessao corrente: a do provedor (cookie) ou a guardada localmente.</summary>
+    private SessaoDto? SessaoAtual => _sessaoProvider?.Invoke() ?? Sessao;
 
     // ------------------------------------------------------------------ infra
 
     private HttpRequestMessage Request(HttpMethod metodo, string caminho, bool autenticado = true)
     {
         var req = new HttpRequestMessage(metodo, caminho);
-        if (autenticado && Sessao is not null)
-            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Sessao.Token);
+        if (autenticado && SessaoAtual is { } sessao)
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", sessao.Token);
         return req;
     }
 
     private async Task<T?> EnviarAsync<T>(HttpRequestMessage req, CancellationToken ct)
     {
         using var resposta = await _http.SendAsync(req, ct).ConfigureAwait(false);
+        if (resposta.StatusCode == HttpStatusCode.Unauthorized && req.Headers.Authorization is not null)
+            DefinirSessao(null);
         await TratarErroAsync(resposta).ConfigureAwait(false);
         if (resposta.StatusCode == HttpStatusCode.NoContent) return default;
         return await resposta.Content.ReadFromJsonAsync<T>(Json, ct).ConfigureAwait(false);

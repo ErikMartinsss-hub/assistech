@@ -3,6 +3,8 @@ using Assistech.Web;
 using Assistech.Web.Components;
 using Assistech.Web.Services;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
 
@@ -29,18 +31,33 @@ builder.Services.AddRazorComponents()
 
 builder.Services.Configure<AssistechWebOptions>(builder.Configuration.GetSection(AssistechWebOptions.SectionName));
 
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<SessaoState>();
-builder.Services.AddScoped<AppAuthenticationStateProvider>();
+builder.Services.AddScoped<SessaoCookieCliente>();
 builder.Services.AddCascadingAuthenticationState();
 
+// O cookie e a fonte da verdade da sessao: ele existe no prerender (via
+// HttpContext) e tambem na abertura do circuito (o WebSocket carrega o
+// cookie). Antes a sessao vivia so na memoria do circuito e um F5 deslogava.
+builder.Services.AddScoped<ServerAuthenticationStateProvider>();
+builder.Services.AddScoped<AppAuthenticationStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<AppAuthenticationStateProvider>());
+builder.Services.AddScoped<IHostEnvironmentAuthenticationStateProvider>(sp => sp.GetRequiredService<AppAuthenticationStateProvider>());
+
 builder.Services
-    .AddAuthentication(opcoes =>
+    .AddAuthentication(opcoes => opcoes.DefaultScheme = SessaoCookie.Esquema)
+    .AddCookie(SessaoCookie.Esquema, opcoes =>
     {
-        opcoes.DefaultAuthenticateScheme = AutenticacaoHandler.Esquema;
-        opcoes.DefaultChallengeScheme = AutenticacaoHandler.Esquema;
-        opcoes.DefaultSignInScheme = AutenticacaoHandler.Esquema;
-    })
-    .AddScheme<AuthenticationSchemeOptions, AutenticacaoHandler>(AutenticacaoHandler.Esquema, _ => { });
+        opcoes.Cookie.Name = SessaoCookie.Nome;
+        opcoes.Cookie.HttpOnly = true;
+        opcoes.Cookie.SameSite = SameSiteMode.Lax;
+        opcoes.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        opcoes.LoginPath = "/entrar";
+        opcoes.LogoutPath = "/entrar";
+        opcoes.AccessDeniedPath = "/entrar";
+        opcoes.ExpireTimeSpan = TimeSpan.FromHours(12);
+        opcoes.SlidingExpiration = false;
+    });
 
 builder.Services.AddAuthorization();
 
@@ -50,7 +67,12 @@ builder.Services.AddHttpClient("assistech-api", client =>
     client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
 });
 
-// Um cliente por circuito: o token fica na memoria do servidor.
+builder.Services.AddHttpClient(SessaoCookieCliente.Cliente, client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
+// Um cliente por circuito: o token sai do cookie, nao da memoria do circuito.
 builder.Services.AddScoped<IAssistechApi>(sp =>
 {
     var opcoes = sp.GetRequiredService<IOptions<AssistechWebOptions>>().Value;
@@ -59,14 +81,10 @@ builder.Services.AddScoped<IAssistechApi>(sp =>
 
     http.BaseAddress = new Uri(opcoes.ApiBaseUrl.TrimEnd('/') + "/");
 
-    var api = new HttpAssistechApi(http, sessao =>
-    {
-        if (sessao is null) estado.Sair();
-        else estado.Entrar(sessao);
-    });
-
-    estado.Reaplicar(api);
-    return api;
+    return new HttpAssistechApi(
+        http,
+        sessao => { if (sessao is null) estado.Sair(); },
+        () => estado.Atual);
 });
 
 var app = builder.Build();
@@ -107,6 +125,8 @@ app.UseAntiforgery();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AllowAnonymous();
+
+app.MapSessaoEndpoints();
 
 // Proxy da logo: mantem a URL da API (que exige contexto de loja) fora do navegador.
 app.MapGet("/logo/{empresaId:guid}", async (

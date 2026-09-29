@@ -1,6 +1,8 @@
 ﻿@inherits LayoutComponentBase
 @implements IDisposable
 @inject Assistech.Web.Services.SessaoState Sessao
+@inject Assistech.Web.Services.SessaoCookieCliente Cookie
+@inject NavigationManager Navigation
 
 <div class="assistech-shell">
     <header class="topo @(Sessao.Atual is null ? "topo-simples" : "")">
@@ -100,8 +102,16 @@
 
     private void AoMudarSessao()
     {
-        UrlLogo = Sessao.Atual is { } s && s.EmpresaId != Guid.Empty
-            ? $"logo/{s.EmpresaId}?v={DateTimeOffset.UtcNow:yyyyMMddHHmmss}"
+        if (Sessao.Atual is null)
+        {
+            var caminho = new Uri(Navigation.Uri).AbsolutePath;
+            if (!caminho.StartsWith("/entrar", StringComparison.OrdinalIgnoreCase))
+                Navigation.NavigateTo("/entrar", forceLoad: true);
+            return;
+        }
+
+        UrlLogo = Sessao.Atual.EmpresaId != Guid.Empty
+            ? $"logo/{Sessao.Atual.EmpresaId}?v={DateTimeOffset.UtcNow:yyyyMMddHHmmss}"
             : null;
         InvokeAsync(StateHasChanged);
     }
@@ -124,7 +134,20 @@
         MenuAberto = false;
     }
 
-    private void Sair() => Sessao.Sair();
+    private async Task Sair()
+    {
+        MenuUsuarioAberto = false;
+        try
+        {
+            await Cookie.SairAsync();
+        }
+        catch (Exception)
+        {
+            // Cookie ja invalido: segue para a tela de entrada.
+        }
+
+        Sessao.Sair();
+    }
 
     public void Dispose() => Sessao.Alterada -= AoMudarSessao;
 }

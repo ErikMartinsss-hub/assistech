@@ -1,34 +1,57 @@
-using Assistech.Shared.Client;
 using Assistech.Shared.Dtos;
 
 namespace Assistech.Web.Services;
 
 /// <summary>
-/// Mantem a sessao do usuario logado durante a navegacao (Blazor Server).
-/// O token vive apenas no servidor: nada e exposto ao navegador alem do circuito.
+/// Sessao visivel na UI (nome, empresa, cor). A fonte da verdade e o cookie:
+/// no prerender o valor sai do HttpContext e, no circuito, do estado de
+/// autenticacao que o framework entrega ao abrir o WebSocket.
 /// </summary>
 public sealed class SessaoState
 {
-    public SessaoDto? Atual { get; private set; }
+    private readonly IHttpContextAccessor? _acesso;
+    private SessaoDto? _atual;
+    private bool _consultouHttp;
+
+    public SessaoState(IHttpContextAccessor? acesso = null) => _acesso = acesso;
+
+    public SessaoDto? Atual
+    {
+        get
+        {
+            if (_atual is null && !_consultouHttp)
+            {
+                _consultouHttp = true;
+                _atual = SessaoCookie.LerPrincipal(_acesso?.HttpContext?.User);
+            }
+
+            return _atual;
+        }
+    }
+
     public bool Autenticado => Atual is not null;
+
     public event Action? Alterada;
 
     public void Entrar(SessaoDto sessao)
     {
-        Atual = sessao;
+        _atual = sessao;
+        _consultouHttp = true;
         Alterada?.Invoke();
     }
 
     public void Sair()
     {
-        Atual = null;
+        _atual = null;
+        _consultouHttp = true;
         Alterada?.Invoke();
     }
 
-    /// <summary>Reaplica a sessao no cliente HTTP da requisicao (a cada circuit).</summary>
-    public void Reaplicar(IAssistechApi api)
+    /// <summary>Sincroniza com o principal do cookie sem disparar navegacao.</summary>
+    public void Sincronizar(SessaoDto? sessao)
     {
-        if (Atual is { } sessao && api is HttpAssistechApi http)
-            http.RestaurarSessao(sessao);
+        _atual = sessao;
+        _consultouHttp = true;
+        Alterada?.Invoke();
     }
 }

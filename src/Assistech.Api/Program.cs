@@ -35,11 +35,16 @@ builder.Services.Configure<ForwardedHeadersOptions>(opcoes =>
 builder.Services.Configure<SupabaseOptions>(builder.Configuration.GetSection(SupabaseOptions.SectionName));
 
 var supabase = builder.Configuration.GetSection(SupabaseOptions.SectionName).Get<SupabaseOptions>() ?? new SupabaseOptions();
-if (string.IsNullOrWhiteSpace(supabase.Url)
-    || string.IsNullOrWhiteSpace(supabase.AnonKey)
-    || string.IsNullOrWhiteSpace(supabase.ConnectionString))
+
+var faltando = new List<string>();
+if (string.IsNullOrWhiteSpace(supabase.Url)) faltando.Add("Supabase:Url");
+if (string.IsNullOrWhiteSpace(supabase.AnonKey)) faltando.Add("Supabase:AnonKey");
+if (string.IsNullOrWhiteSpace(supabase.ConnectionString)) faltando.Add("Supabase:ConnectionString");
+if (faltando.Count > 0)
 {
-    Console.Error.WriteLine("Supabase nao configurado. Defina Supabase:Url, Supabase:AnonKey e Supabase:ConnectionString em src/Assistech.Api/appsettings.json.");
+    Console.Error.WriteLine($"Supabase nao configurado. Faltando: {string.Join(", ", faltando)}.");
+    Console.Error.WriteLine("No Render, defina na aba Environment do servico (Supabase__Url, Supabase__AnonKey, Supabase__ConnectionString).");
+    Console.Error.WriteLine("Local: variables de ambiente, appsettings.json ou user-secrets.");
     return 1;
 }
 

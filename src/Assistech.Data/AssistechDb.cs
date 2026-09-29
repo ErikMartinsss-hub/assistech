@@ -31,7 +31,7 @@ public sealed class AssistechDb : IAssistechDb
             throw new InvalidOperationException(
                 "Supabase nao configurado. Defina Supabase:Url, Supabase:AnonKey e Supabase:ConnectionString.");
 
-        var builder = new NpgsqlDataSourceBuilder(_options.ConnectionString);
+        var builder = new NpgsqlDataSourceBuilder(SupabaseOptions.NormalizarConnectionString(_options.ConnectionString));
 
         // Os enums do C# (PascalCase) espelham os enums do Postgres (snake_case).
         var tradutor = new NpgsqlSnakeCaseNameTranslator();

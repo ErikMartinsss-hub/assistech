@@ -11,7 +11,7 @@ public static class ClienteEndpoints
     {
         var grupo = rotas.MapGroup("/api/clientes").WithTags("Clientes").RequireAuthorization();
 
-        grupo.MapGet("/", async (ClienteFiltro filtro, SessaoAtual sessao, IClienteRepository repo, CancellationToken ct) =>
+        grupo.MapGet("/", async ([AsParameters] ClienteFiltro filtro, SessaoAtual sessao, IClienteRepository repo, CancellationToken ct) =>
         {
             if (filtro.TamanhoPagina > 200) filtro.TamanhoPagina = 200;
             return Results.Ok(await repo.ListarAsync(sessao.EmpresaId, filtro, ct));

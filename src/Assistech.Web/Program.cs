@@ -3,9 +3,26 @@ using Assistech.Web;
 using Assistech.Web.Components;
 using Assistech.Web.Services;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// O Render encerra o TLS e injeta a porta. Sem os forwarded headers, o
+// UseHttpsRedredirect abaixo fica em laco: o app "ve" http e redireciona
+// para https, o Render devolve http de novo.
+var portaRender = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(portaRender))
+    builder.WebHost.UseUrls($"http://0.0.0.0:{portaRender}");
+
+builder.Services.Configure<ForwardedHeadersOptions>(opcoes =>
+{
+    opcoes.ForwardedHeaders = ForwardedHeaders.XForwardedFor
+                            | ForwardedHeaders.XForwardedProto
+                            | ForwardedHeaders.XForwardedHost;
+    opcoes.KnownNetworks.Clear();
+    opcoes.KnownProxies.Clear();
+});
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -53,6 +70,8 @@ builder.Services.AddScoped<IAssistechApi>(sp =>
 });
 
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
 {

@@ -10,7 +10,7 @@ public static class OrdemServicoEndpoints
     {
         var grupo = rotas.MapGroup("/api/ordens").WithTags("Ordens de Servico").RequireAuthorization();
 
-        grupo.MapGet("/", async (OrdemServicoFiltro filtro, SessaoAtual sessao, IOrdemServicoRepository repo, CancellationToken ct) =>
+        grupo.MapGet("/", async ([AsParameters] OrdemServicoFiltro filtro, SessaoAtual sessao, IOrdemServicoRepository repo, CancellationToken ct) =>
         {
             if (filtro.TamanhoPagina > 200) filtro.TamanhoPagina = 200;
             return Results.Ok(await repo.ListarAsync(sessao.EmpresaId, filtro, ct));

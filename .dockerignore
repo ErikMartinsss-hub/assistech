@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.idea/
+**/*.user
+**/*.suo
+.git/
+.github/
+db/
+docs/
+*.md
+!README.md
+.env
+.env.*
+appsettings.*.local.json

@@ -7,10 +7,29 @@ using Assistech.Data;
 using Assistech.Shared;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// O Render encerra o TLS e injeta a porta; sem isso o container sobe em 8080
+// e o proxy nao encontra o processo.
+var portaRender = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(portaRender))
+    builder.WebHost.UseUrls($"http://0.0.0.0:{portaRender}");
+
+// O Render repassa X-Forwarded-Proto/Host. A lista e zerada de proposito:
+// o container so e alcancavel pelo proxy, que ja knows a porta publica.
+builder.Services.Configure<ForwardedHeadersOptions>(opcoes =>
+{
+    opcoes.ForwardedHeaders = ForwardedHeaders.XForwardedFor
+                            | ForwardedHeaders.XForwardedProto
+                            | ForwardedHeaders.XForwardedHost;
+    opcoes.KnownNetworks.Clear();
+    opcoes.KnownProxies.Clear();
+});
+
 
 // ---------------------------------------------------------------- configuracao
 builder.Services.Configure<SupabaseOptions>(builder.Configuration.GetSection(SupabaseOptions.SectionName));
@@ -93,6 +112,7 @@ builder.Services.AddCors(opcoes =>
 var app = builder.Build();
 
 // ---------------------------------------------------------------- pipeline
+app.UseForwardedHeaders();
 app.UseExceptionHandler(handler => handler.Run(async contexto =>
 {
     var feature = contexto.Features.Get<IExceptionHandlerFeature>();

@@ -80,3 +80,37 @@ São a única saída da RLS e devolvem apenas o id da loja.
 O WPF em .NET 8 não expõe a paginação XPS do `FlowDocument` de forma utilizável, então o
 termo é um layout WPF nativo em A4, renderizado com `RenderTargetBitmap` a 300 DPI e
 impresso via `System.Windows.Forms.PrintDialog` + `PrintDocument`.
+
+## Deploy no Render
+
+O web é Blazor **Server** (SignalR/WebSocket) e a API é ASP.NET Core: nenhum dos dois roda
+em hospedagem serverless (Vercel, Netlify Functions). No Render, ambos viram Web Services
+com Docker.
+
+1. Crie um Blueprint em **New → Blueprint**, apontando para este repositório. O `render.yaml`
+   já declara os dois serviços e os campos que você precisa preencher.
+2. Preencha as variáveis:
+
+   | Serviço | Variável | Valor |
+   | --- | --- | --- |
+   | `assistech-api` | `Supabase__Url` | `https://SEUREF.supabase.co` |
+   | `assistech-api` | `Supabase__AnonKey` | publishable key (`sb_publishable_...`) |
+   | `assistech-api` | `Supabase__ConnectionString` | `postgresql://assistech_api:SENHA@db.SEUREF.supabase.co:5432/postgres` |
+   | `assistech-api` | `Cors__Web__0` | URL pública do web |
+   | `assistech-web` | `Assistech__ApiBaseUrl` | URL pública da API |
+
+3. O banco é o Supabase, então o Blueprint não provisiona Postgres.
+
+Detalhes que importam:
+
+- `Dockerfile.api` e `Dockerfile.web` leem a porta da variável `PORT` (injetada pelo Render)
+  e as duas apps leem `X-Forwarded-Proto`. Sem isso, o `UseHttpsRedirection` do web entra em
+  laço de redirect, porque o app "vê" HTTP atrás do proxy que termina o TLS.
+- O connection string em URI é convertido para `key=value` pelo
+  `SupabaseOptions.NormalizarConnectionString()`, porque o Npgsql não aceita
+  `postgresql://`. O `SSL Mode=Require` é automático, já que o certificado do Supabase não
+  casa com o host `db.<ref>.supabase.co` na validação estrita.
+- O Swagger só sobe em `ASPNETCORE_ENVIRONMENT=Development`.
+- No plano gratuito, os serviços dormem após 15 min sem uso e a primeira requisição demora
+  (partida fria do .NET). Para uso real, o plano pago elimina isso.
+

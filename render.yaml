@@ -1,0 +1,39 @@
+# Blueprint do Render: https://render.com/docs/blueprint-spec
+# A API e o web sobem como Web Services (Docker). O banco fica no Supabase,
+# entao nao ha Postgres aqui.
+#
+# No painel do Render: New > Blueprint > apontar para este repositorio.
+# Os campos marcados com sync: false sao pedidos na hora da criacao.
+
+services:
+  - type: web
+    name: assistech-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile.api
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: Supabase__Url
+        sync: false
+      - key: Supabase__AnonKey
+        sync: false
+      - key: Supabase__ConnectionString
+        sync: false
+      - key: Supabase__AplicarSchemaAutomaticamente
+        value: "false"
+      - key: Cors__Web__0
+        sync: false
+
+  - type: web
+    name: assistech-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile.web
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: Assistech__ApiBaseUrl
+        sync: false

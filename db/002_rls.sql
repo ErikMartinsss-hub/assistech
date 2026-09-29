@@ -100,13 +100,13 @@ alter table public.ordens_servico enable row level security;
 alter table public.os_itens       enable row level security;
 alter table public.os_historico   enable row level security;
 
-force row level security on public.empresas;
-force row level security on public.usuarios;
-force row level security on public.clientes;
-force row level security on public.equipamentos;
-force row level security on public.ordens_servico;
-force row level security on public.os_itens;
-force row level security on public.os_historico;
+alter table public.empresas       force row level security;
+alter table public.usuarios       force row level security;
+alter table public.clientes       force row level security;
+alter table public.equipamentos   force row level security;
+alter table public.ordens_servico force row level security;
+alter table public.os_itens       force row level security;
+alter table public.os_historico   force row level security;
 
 -- empresas: leitura da propria loja, escrita apenas por admin
 drop policy if exists p_empresas_select on public.empresas;

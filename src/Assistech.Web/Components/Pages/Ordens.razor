@@ -1,0 +1,209 @@
+@page "/ordens"
+@attribute [Authorize]
+@inject Assistech.Shared.Client.IAssistechApi Api
+@inject NavigationManager Navigation
+
+<PageTitle>Ordens de servico - Assistech</PageTitle>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <h1 class="titulo-pagina me-auto">Ordens de servico</h1>
+    <a class="btn btn-primary" href="/ordens/nova">+ Nova OS</a>
+</div>
+
+<div class="cartao mb-3">
+    <div class="cartao-corpo">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-6">
+                <label class="form-label small mb-1" for="busca">Buscar</label>
+                <input id="busca" class="form-control" placeholder="Numero, cliente, telefone, marca ou modelo"
+                       value="@filtro.Busca" @oninput="AoBuscar" />
+            </div>
+            <div class="col-7 col-md-3">
+                <label class="form-label small mb-1" for="status">Status</label>
+                <select id="status" class="form-select" value="@(filtro.Status ?? "")" @onchange="AoFiltrarStatus">
+                    <option value="">Todos</option>
+                    <option value="aberta">Aberta</option>
+                    <option value="em_analise">Em analise</option>
+                    <option value="aguardando_pecas">Aguardando pecas</option>
+                    <option value="aguardando_cliente">Aguardando cliente</option>
+                    <option value="aguardando_aprovacao">Aguardando aprovacao</option>
+                    <option value="em_reparo">Em reparo</option>
+                    <option value="pronta_entrega">Pronta para entrega</option>
+                    <option value="entregue">Entregue</option>
+                    <option value="cancelada">Cancelada</option>
+                </select>
+            </div>
+            <div class="col-5 col-md-3 d-flex gap-2">
+                <button class="btn btn-outline-secondary flex-fill" @onclick="Limpar">Limpar</button>
+                <button class="btn btn-outline-primary flex-fill" @onclick="Recarregar">Atualizar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (erro is not null)
+{
+    <div class="alert alert-danger">@erro</div>
+}
+
+<div class="cartao">
+    <div class="cartao-cabecalho">
+        <span>@resultado.Total ordem(s)</span>
+    </div>
+
+    @if (Ocupado)
+    {
+        <div class="cartao-corpo text-center py-5">
+            <div class="spinner-border text-primary"></div>
+        </div>
+    }
+    else if (resultado.Itens.Count == 0)
+    {
+        <div class="cartao-corpo text-center py-5 text-muted">
+            Nenhuma ordem encontrada.
+            <div class="mt-3">
+                <a class="btn btn-sm btn-outline-primary" href="/ordens/nova">Abrir a primeira OS</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="tabela-envolvivel">
+            <table class="table tabela-assistech align-middle">
+                <thead>
+                    <tr>
+                        <th>OS</th>
+                        <th>Cliente</th>
+                        <th>Equipamento</th>
+                        <th>Status</th>
+                        <th>Entrada</th>
+                        <th>Previsao</th>
+                        <th class="text-end">Valor</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var os in resultado.Itens)
+                    {
+                        <tr>
+                            <td class="fw-semibold">#@os.Numero</td>
+                            <td>
+                                <div>@os.ClienteNome</div>
+                                <small class="text-muted">@os.ClienteTelefone</small>
+                            </td>
+                            <td>@os.Equipamento</td>
+                            <td>
+                                <StatusBadge Status="@os.Status" />
+                                @if (os.Atrasada)
+                                {
+                                    <span class="selo-atrasada">atrasada</span>
+                                }
+                            </td>
+                            <td class="text-nowrap">@os.DataEntrada.LocalDateTime.ToString("dd/MM/yy")</td>
+                            <td class="text-nowrap">@(os.DataPrevisao?.LocalDateTime.ToString("dd/MM/yy") ?? "-")</td>
+                            <td class="text-end">@os.ValorTotal.ToString("C2")</td>
+                            <td class="text-end text-nowrap">
+                                <a class="btn btn-sm btn-outline-secondary" href="@($"/ordens/{os.Id}")">Abrir</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (resultado.TotalPaginas > 1)
+        {
+            <div class="cartao-corpo d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-outline-secondary" disabled="@(resultado.Pagina <= 1)" @onclick="PaginaAnterior">Anterior</button>
+                <span class="small text-muted">Pagina @resultado.Pagina de @resultado.TotalPaginas</span>
+                <button class="btn btn-sm btn-outline-secondary" disabled="@(resultado.Pagina >= resultado.TotalPaginas)" @onclick="ProximaPagina">Proxima</button>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private readonly OrdemServicoFiltro filtro = new();
+    private PagedResult<OrdemServicoResumo> resultado = new();
+    private bool Ocupado = true;
+    private string? erro;
+    private CancellationTokenSource? buscaCts;
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        Ocupado = true;
+        erro = null;
+
+        try
+        {
+            resultado = await Api.ListarOrdensAsync(filtro);
+        }
+        catch (ApiException e)
+        {
+            erro = e.Message;
+        }
+        finally
+        {
+            Ocupado = false;
+        }
+    }
+
+    private async Task AoBuscar(ChangeEventArgs e)
+    {
+        filtro.Busca = e.Value?.ToString();
+        filtro.Pagina = 1;
+        await RecarregarComDebounceAsync();
+    }
+
+    private Task AoFiltrarStatus(ChangeEventArgs e)
+    {
+        filtro.Status = e.Value?.ToString();
+        filtro.Pagina = 1;
+        return CarregarAsync();
+    }
+
+    private async Task RecarregarComDebounceAsync()
+    {
+        buscaCts?.Cancel();
+        buscaCts = new CancellationTokenSource();
+        var token = buscaCts.Token;
+
+        try
+        {
+            await Task.Delay(350, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        await CarregarAsync();
+    }
+
+    private Task Recarregar() => CarregarAsync();
+
+    private void Limpar()
+    {
+        buscaCts?.Cancel();
+        filtro.Busca = null;
+        filtro.Status = null;
+        filtro.Pagina = 1;
+        _ = CarregarAsync();
+    }
+
+    private async Task PaginaAnterior()
+    {
+        if (filtro.Pagina <= 1) return;
+        filtro.Pagina--;
+        await CarregarAsync();
+    }
+
+    private async Task ProximaPagina()
+    {
+        if (filtro.Pagina >= resultado.TotalPaginas) return;
+        filtro.Pagina++;
+        await CarregarAsync();
+    }
+}

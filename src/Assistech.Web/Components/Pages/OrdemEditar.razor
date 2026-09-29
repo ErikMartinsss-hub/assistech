@@ -1,0 +1,399 @@
+@page "/ordens/nova"
+@page "/ordens/{Id:guid}"
+@attribute [Authorize]
+@inject Assistech.Shared.Client.IAssistechApi Api
+@inject NavigationManager Navigation
+
+<PageTitle>@(EhEdicao ? $"OS #{ordem?.Numero}" : "Nova ordem") - Assistech</PageTitle>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <a class="btn btn-outline-secondary btn-sm" href="/ordens">&#8592; Voltar</a>
+    <h1 class="titulo-pagina me-auto">@(EhEdicao ? $"Ordem de servico #{ordem?.Numero}" : "Nova ordem de servico")</h1>
+    @if (EhEdicao && ordem is not null)
+    {
+        <a class="btn btn-outline-secondary" href="@($"/ordens/{ordem.Id}/termo")" target="_blank">Termo de entrada</a>
+        <button class="btn btn-primary" @onclick="SalvarAsync" disabled="@Ocupado">Salvar</button>
+    }
+    else
+    {
+        <button class="btn btn-primary" @onclick="SalvarAsync" disabled="@Ocupado">Abrir ordem</button>
+    }
+</div>
+
+@if (erro is not null)
+{
+    <div class="alert alert-danger">@erro</div>
+}
+
+@if (Ocupado)
+{
+    <div class="cartao"><div class="cartao-corpo text-center py-5"><div class="spinner-border text-primary"></div></div></div>
+}
+else if (form is null)
+{
+    <div class="cartao"><div class="cartao-corpo text-muted py-5 text-center">Ordem nao encontrada.</div></div>
+}
+else
+{
+    <div class="row g-3">
+        <!-- ------------------------------------------------ cliente / equipamento -->
+        <div class="col-12 col-lg-5">
+            <div class="cartao h-100">
+                <div class="cartao-cabecalho"><span>Cliente e equipamento</span></div>
+                <div class="cartao-corpo">
+                    <div class="mb-3">
+                        <label class="form-label small mb-1" for="buscaCliente">Buscar cliente</label>
+                        <div class="input-group input-group-sm">
+                            <input id="buscaCliente" class="form-control" placeholder="Nome ou telefone"
+                                   value="@buscaCliente" @oninput="BuscarClientes" />
+                        </div>
+                    </div>
+
+                    <label class="form-label small mb-1">Cliente</label>
+                    <select class="form-select form-select-sm mb-1" value="@(form.ClienteId?.ToString() ?? "")" @onchange="SelecionarCliente">
+                        <option value="">Selecione...</option>
+                        @foreach (var c in clientes)
+                        {
+                            <option value="@c.Id">@c.Nome - @c.Telefone</option>
+                        }
+                    </select>
+
+                    @if (cliente is not null)
+                    {
+                        <div class="small text-muted mb-3">
+                            @(cliente.Documento.Length > 0 ? cliente.Documento + " - " : "")@cliente.Endereco
+                            <a href="@($"/clientes/{cliente.Id}")" target="_blank">ver cadastro</a>
+                        </div>
+                    }
+
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <label class="form-label small mb-1">Equipamento</label>
+                        <button class="btn btn-link btn-sm p-0" @onclick="AdicionarEquipamento">+ cadastrar equipamento</button>
+                    </div>
+
+                    <select class="form-select form-select-sm" value="@(form.EquipamentoId?.ToString() ?? "")" @onchange="SelecionarEquipamento" disabled="@(form.ClienteId is null)">
+                        <option value="">Selecione...</option>
+                        @foreach (var e in equipamentos)
+                        {
+                            <option value="@e.Id">@e.Marca @e.Modelo (@e.Tipo)</option>
+                        }
+                    </select>
+
+                    @if (form.EquipamentoId is not null)
+                    {
+                        <div class="form-text mt-2">
+                            Senha / pattern de desbloqueio:
+                            <input class="form-control form-control-sm mt-1" @bind="form.SenhaEquipamento" />
+                        </div>
+                    }
+
+                    <div class="mt-3">
+                        <label class="form-label small mb-1" for="acessorios">Acessorios recebidos</label>
+                        <input id="acessorios" class="form-control form-control-sm" @bind="form.Acessorios"
+                               placeholder="Capa, carregador, chip..." />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ------------------------------------------------ dados da OS -->
+        <div class="col-12 col-lg-7">
+            <div class="cartao mb-3">
+                <div class="cartao-cabecalho"><span>Dados da ordem</span></div>
+                <div class="cartao-corpo">
+                    <div class="row g-2">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small mb-1">Status</label>
+                            <StatusSelect Valor="@form.Status" ValorChanged="v => form.Status = v ?? form.Status" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small mb-1" for="tipoServico">Tipo de servico</label>
+                            <input id="tipoServico" class="form-control form-control-sm" @bind="form.TipoServico"
+                                   placeholder="Troca de tela, upgrade de SSD..." />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small mb-1" for="previsao">Previsao de entrega</label>
+                            <input id="previsao" type="date" class="form-control form-control-sm"
+                                   value="@(form.DataPrevisao?.LocalDateTime.ToString("yyyy-MM-dd") ?? "")"
+                                   @onchange="DefinirPrevisao" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small mb-1" for="garantia">Garantia (dias)</label>
+                            <input id="garantia" type="number" min="0" max="3650" class="form-control form-control-sm" @bind="form.GarantiaDias" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1" for="relato">Relato do cliente</label>
+                            <textarea id="relato" class="form-control form-control-sm" rows="2" @bind="form.RelatoCliente"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1" for="diagnostico">Diagnostico tecnico</label>
+                            <textarea id="diagnostico" class="form-control form-control-sm" rows="3" @bind="form.Diagnostico"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1" for="laudo">Laudo de conclusao</label>
+                            <textarea id="laudo" class="form-control form-control-sm" rows="2" @bind="form.LaudoConclusao"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- -------------------------------------------- itens -->
+            <div class="cartao mb-3">
+                <div class="cartao-cabecalho">
+                    <span>Pecas e servicos</span>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="AdicionarItem">+ Adicionar</button>
+                </div>
+                <div class="tabela-envolvivel">
+                    <table class="table tabela-assistech align-middle">
+                        <thead>
+                            <tr>
+                                <th style="min-width:180px">Descricao</th>
+                                <th style="width:130px">Tipo</th>
+                                <th style="width:90px">Qtd</th>
+                                <th style="width:120px">Valor un.</th>
+                                <th style="width:120px">Custo un.</th>
+                                <th style="width:110px" class="text-end">Subtotal</th>
+                                <th style="width:44px"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < form.Itens.Count; i++)
+                            {
+                                var indice = i;
+                                var item = form.Itens[indice];
+                                <tr>
+                                    <td><input class="form-control form-control-sm" @bind="item.Descricao" /></td>
+                                    <td>
+                                        <select class="form-select form-select-sm" @bind="item.Tipo">
+                                            <option value="servico">Servico</option>
+                                            <option value="peca">Peca</option>
+                                            <option value="deslocamento">Deslocamento</option>
+                                        </select>
+                                    </td>
+                                    <td><input type="number" min="0" step="0.01" class="form-control form-control-sm text-end" @bind="item.Quantidade" /></td>
+                                    <td><input type="number" min="0" step="0.01" class="form-control form-control-sm text-end" @bind="item.ValorUnitario" /></td>
+                                    <td><input type="number" min="0" step="0.01" class="form-control form-control-sm text-end" @bind="item.CustoUnitario" /></td>
+                                    <td class="text-end">@Subtotal(item).ToString("C2")</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoverItem(indice)" title="Remover">&times;</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @if (form.Itens.Count == 0)
+                {
+                    <div class="cartao-corpo text-muted small">Nenhum item lancer. O total Considera a soma dos itens.</div>
+                }
+            </div>
+
+            <!-- -------------------------------------------- valores -->
+            <div class="cartao">
+                <div class="cartao-cabecalho"><span>Valores</span></div>
+                <div class="cartao-corpo">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-6 col-md-4">
+                            <label class="form-label small mb-1">Valor orcado</label>
+                            <input type="number" min="0" step="0.01" class="form-control form-control-sm text-end"
+                                   value="@(form.OrcamentoValor?.ToString("0.00") ?? "")" @onchange="DefinirOrcamento" placeholder="0,00" />
+                            <div class="form-text">Vazio = soma dos itens</div>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <label class="form-label small mb-1">Desconto (R$)</label>
+                            <input type="number" min="0" step="0.01" class="form-control form-control-sm text-end" value="@Desconto" @onchange="DefinirDesconto" />
+                        </div>
+                        <div class="col-12 col-md-4 text-md-end">
+                            <div class="small text-muted">Total da OS</div>
+                            <div class="h4 mb-0">@Total.ToString("C2")</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private OrdemServicoInput? form;
+    private OrdemServicoDto? ordem;
+    private ClienteDto? cliente;
+    private List<ClienteDto> clientes = new();
+    private List<EquipamentoDto> equipamentos = new();
+    private string buscaCliente = string.Empty;
+    private decimal Desconto;
+    private bool Ocupado = true;
+    private string? erro;
+
+    private bool EhEdicao => Id.HasValue && Id != Guid.Empty;
+
+    private decimal Total
+    {
+        get
+        {
+            var subtotal = form?.Itens.Sum(i => i.Quantidade * i.ValorUnitario) ?? 0m;
+            var baseValor = form?.OrcamentoValor ?? subtotal;
+            return Math.Max(baseValor - Desconto, 0m);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Ocupado = true;
+        erro = null;
+
+        try
+        {
+            if (EhEdicao)
+            {
+                ordem = await Api.ObterOrdemAsync(Id!.Value);
+                if (ordem is null)
+                {
+                    erro = "Ordem de servico nao encontrada.";
+                    return;
+                }
+
+                form = new OrdemServicoInput
+                {
+                    Id = ordem.Id,
+                    ClienteId = ordem.ClienteId,
+                    EquipamentoId = ordem.EquipamentoId,
+                    Status = ordem.Status,
+                    TipoServico = ordem.TipoServico,
+                    RelatoCliente = ordem.RelatoCliente,
+                    Diagnostico = ordem.Diagnostico,
+                    LaudoConclusao = ordem.LaudoConclusao,
+                    SenhaEquipamento = ordem.SenhaEquipamento,
+                    Acessorios = ordem.Acessorios,
+                    OrcamentoValor = ordem.OrcamentoValor,
+                    Desconto = ordem.Desconto,
+                    GarantiaDias = ordem.GarantiaDias,
+                    DataPrevisao = ordem.DataPrevisao,
+                    Itens = ordem.Itens.Select(i => new ItemOrdemServicoInput
+                    {
+                        Id = i.Id,
+                        Tipo = i.Tipo,
+                        Descricao = i.Descricao,
+                        Quantidade = i.Quantidade,
+                        ValorUnitario = i.ValorUnitario,
+                        CustoUnitario = i.CustoUnitario
+                    }).ToList()
+                };
+
+                Desconto = ordem.Desconto;
+                cliente = await Api.ObterClienteAsync(ordem.ClienteId);
+                clientes = (await Api.ListarClientesAsync(new ClienteFiltro { Busca = ordem.ClienteNome, TamanhoPagina = 20 })).Itens.ToList();
+                if (cliente is not null && clientes.All(c => c.Id != ordem.ClienteId))
+                    clientes.Insert(0, cliente);
+
+                if (ordem.EquipamentoId != Guid.Empty)
+                    equipamentos = (await Api.ListarEquipamentosDoClienteAsync(ordem.ClienteId)).ToList();
+            }
+            else
+            {
+                form = new OrdemServicoInput();
+                Desconto = 0m;
+                clientes = (await Api.ListarClientesAsync(new ClienteFiltro { TamanhoPagina = 50 })).Itens.ToList();
+            }
+        }
+        catch (ApiException e)
+        {
+            erro = e.Message;
+        }
+        finally
+        {
+            Ocupado = false;
+        }
+    }
+
+    private static decimal Subtotal(ItemOrdemServicoInput item) => item.Quantidade * item.ValorUnitario;
+
+    private void AdicionarItem() => form!.Itens.Add(new ItemOrdemServicoInput { Descricao = string.Empty });
+
+    private void RemoverItem(int indice) => form!.Itens.RemoveAt(indice);
+
+    private async Task BuscarClientes(ChangeEventArgs e)
+    {
+        buscaCliente = e.Value?.ToString() ?? string.Empty;
+        var resultado = await Api.ListarClientesAsync(new ClienteFiltro { Busca = buscaCliente, TamanhoPagina = 30 });
+        clientes = resultado.Itens.ToList();
+    }
+
+    private async Task SelecionarCliente(ChangeEventArgs e)
+    {
+        if (!Guid.TryParse(e.Value?.ToString(), out var id)) return;
+
+        form!.ClienteId = id;
+        form.EquipamentoId = null;
+        cliente = clientes.FirstOrDefault(c => c.Id == id) ?? await Api.ObterClienteAsync(id);
+        equipamentos = id == Guid.Empty
+            ? new List<EquipamentoDto>()
+            : (await Api.ListarEquipamentosDoClienteAsync(id)).ToList();
+    }
+
+    private void SelecionarEquipamento(ChangeEventArgs e)
+        => form!.EquipamentoId = Guid.TryParse(e.Value?.ToString(), out var id) && id != Guid.Empty ? id : null;
+
+    private void DefinirPrevisao(ChangeEventArgs e)
+    {
+        var texto = e.Value?.ToString();
+        form!.DataPrevisao = DateTime.TryParse(texto, out var data)
+            ? new DateTimeOffset(DateOnly.FromDateTime(data.Date), TimeOnly.MinValue, TimeSpan.Zero)
+            : null;
+    }
+
+    private void DefinirOrcamento(ChangeEventArgs e)
+    {
+        var texto = e.Value?.ToString();
+        form!.OrcamentoValor = decimal.TryParse(texto, System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var valor) ? valor : null;
+    }
+
+    private void DefinirDesconto(ChangeEventArgs e)
+    {
+        Desconto = decimal.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var valor) ? valor : 0m;
+    }
+
+    private void AdicionarEquipamento()
+    {
+        if (form!.ClienteId is not { } clienteId) return;
+        Navigation.NavigateTo($"/clientes/{clienteId}?novoEquipamento=1");
+    }
+
+    private async Task SalvarAsync()
+    {
+        if (form is null) return;
+
+        if (form.ClienteId is null || form.ClienteId == Guid.Empty)
+        {
+            erro = "Selecione o cliente.";
+            return;
+        }
+
+        if (form.EquipamentoId is null || form.EquipamentoId == Guid.Empty)
+        {
+            erro = "Selecione o equipamento.";
+            return;
+        }
+
+        form.Desconto = Desconto;
+        Ocupado = true;
+        erro = null;
+        try
+        {
+            var salva = await Api.SalvarOrdemAsync(form);
+            Navigation.NavigateTo($"/ordens/{salva.Id}");
+        }
+        catch (ApiException e)
+        {
+            erro = e.MensagemFormatada;
+        }
+        finally
+        {
+            Ocupado = false;
+        }
+    }
+}

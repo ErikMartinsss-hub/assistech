@@ -1,0 +1,122 @@
+<UserControl x:Class="Assistech.Desktop.Views.OrdensView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Assistech.Desktop.Converters"
+             FontFamily="Segoe UI">
+    <UserControl.Resources>
+        <conv:BooleanoVisibilidadeConverter x:Key="BoolVis" />
+        <conv:NaoVazioVisibilidadeConverter x:Key="NaoVazioVis" />
+        <conv:StatusFundoConverter x:Key="StatusFundo" />
+        <conv:StatusCorConverter x:Key="StatusCor" />
+
+        <Style x:Key="Celula" TargetType="DataGridCell">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="#1F2933" />
+            <Setter Property="FontWeight" Value="Normal" />
+        </Style>
+
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#F8FAFC" />
+            <Setter Property="Foreground" Value="#64748B" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="24,20,24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- filtros -->
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="200" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBox Grid.Column="0" Text="{Binding Busca, UpdateSourceTrigger=PropertyChanged, Delay=350}"
+                     Padding="10,7" VerticalContentAlignment="Center" />
+
+            <ComboBox Grid.Column="1" Margin="10,0,0,0" Height="32"
+                      ItemsSource="{Binding Filtros}" DisplayMemberPath="Descricao"
+                      SelectedValuePath="Valor" SelectedValue="{Binding StatusFiltro}" />
+
+            <Button Grid.Column="2" Margin="10,0,0,0" Style="{StaticResource Botao}" Height="32"
+                    Content="Nova ordem" Click="NovaOrdemClicado" />
+        </Grid>
+
+        <!-- tabela -->
+        <Border Grid.Row="1" Background="White" BorderBrush="{StaticResource BrushBorda}" BorderThickness="1"
+                CornerRadius="8" ClipToBounds="True">
+            <Grid>
+                <DataGrid x:Name="Grid" ItemsSource="{Binding Ordens}" AutoGenerateColumns="False" IsReadOnly="True"
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                          HorizontalGridLinesBrush="#EEF1F5" BorderThickness="0" Background="White"
+                          RowHeaderWidth="0" ColumnHeaderHeight="38" CanUserAddRows="False"
+                          SelectionMode="Single" EnableRowVirtualization="True"
+                          SelectedItem="{Binding OrdemSelecionada, Mode=TwoWay}"
+                          MouseDoubleClick="LinhaDuploClique"
+                          FontSize="12.5" CellStyle="{StaticResource Celula}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="OS" Binding="{Binding Numero}" Width="70" />
+                        <DataGridTextColumn Header="Cliente" Binding="{Binding Cliente}" Width="1.6*" />
+                        <DataGridTextColumn Header="Equipamento" Binding="{Binding Equipamento}" Width="1.4*" />
+                        <DataGridTemplateColumn Header="Status" Width="140">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="{Binding Status, Converter={StaticResource StatusFundo}}"
+                                            CornerRadius="10" Padding="8,2" HorizontalAlignment="Left">
+                                        <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="{Binding Status, Converter={StaticResource StatusCor}}" />
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Entrada" Binding="{Binding Entrada}" Width="90" />
+                        <DataGridTextColumn Header="Prazo" Binding="{Binding Prazo}" Width="100" />
+                        <DataGridTextColumn Header="Total" Binding="{Binding Total, StringFormat=R$ {0:N2}}" Width="100" />
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="320"
+                            Visibility="{Binding TemOrdens, Converter={StaticResource BoolVis}, ConverterParameter=invert}">
+                    <TextBlock Text="Nenhuma ordem encontrada" FontSize="15" FontWeight="SemiBold"
+                               Foreground="#334155" HorizontalAlignment="Center" />
+                    <TextBlock Text="Ajuste os filtros ou cadastre a primeira ordem de servico."
+                               FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" TextAlignment="Center"
+                               Margin="0,6,0,0" />
+                    <Button Content="Cadastrar ordem" Style="{StaticResource Botao}" HorizontalAlignment="Center"
+                            Margin="0,14,0,0" Padding="16,7" Click="NovaOrdemClicado" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- rodape -->
+        <Grid Grid.Row="3" Margin="0,14,0,0">
+            <TextBlock Text="{Binding Resumo}" VerticalAlignment="Center" FontSize="12" Foreground="#6B7A8D"
+                       HorizontalAlignment="Left" />
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Anterior" Style="{StaticResource BotaoSecundario}" Padding="12,6"
+                        Click="PaginaAnteriorClicado" />
+                <Button Content="Proxima" Style="{StaticResource BotaoSecundario}" Padding="12,6" Margin="8,0,0,0"
+                        Click="ProximaPaginaClicado" />
+                <Button Content="Abrir" Style="{StaticResource BotaoSecundario}" Padding="12,6" Margin="8,0,0,0"
+                        Click="AbrirClicado" />
+                <Button Content="Termo" Style="{StaticResource BotaoSecundario}" Padding="12,6" Margin="8,0,0,0"
+                        Click="TermoClicado" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

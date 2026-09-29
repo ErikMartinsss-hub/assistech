@@ -1,0 +1,330 @@
+:root {
+    --assistech-primaria: #0d6efd;
+    --assistech-primaria-escura: #0a58ca;
+    --assistech-lateral: #1b2430;
+    --assistech-lateral-texto: #c7d1dd;
+    --assistech-borda: #e3e8ef;
+    --assistech-fundo: #f4f6f9;
+}
+
+html, body {
+    font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+    background: var(--assistech-fundo);
+    color: #1f2933;
+}
+
+.assistech-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ---------------------------------------------------------------- topo */
+.topo {
+    background: linear-gradient(120deg, var(--assistech-primaria-escura), var(--assistech-primaria));
+    box-shadow: 0 1px 6px rgba(15, 23, 42, .18);
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+}
+
+.topo-simples {
+    background: linear-gradient(120deg, #111827, #1f2937);
+}
+
+.marca-texto {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+    color: #fff;
+}
+
+.marca-texto small {
+    font-size: .72rem;
+    letter-spacing: .02em;
+}
+
+.logo-mini {
+    height: 34px;
+    max-width: 120px;
+    object-fit: contain;
+    background: #fff;
+    border-radius: 6px;
+    padding: 2px 4px;
+}
+
+.logo-placeholder {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, .18);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+.logo-placeholder.grande {
+    width: 64px;
+    height: 64px;
+    font-size: 1.8rem;
+    border-radius: 16px;
+    background: var(--assistech-primaria);
+}
+
+.menu-usuario {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    min-width: 210px;
+    background: #fff;
+    border: 1px solid var(--assistech-borda);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, .18);
+    z-index: 1040;
+    overflow: hidden;
+}
+
+.menu-usuario .item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: .5rem .9rem;
+    background: none;
+    border: 0;
+    color: #1f2933;
+    text-decoration: none;
+    font-size: .92rem;
+}
+
+.menu-usuario .item:hover {
+    background: #f1f5f9;
+}
+
+/* ---------------------------------------------------------------- corpo */
+.corpo {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+.menu-lateral {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--assistech-lateral);
+    color: var(--assistech-lateral-texto);
+    padding-bottom: 1.5rem;
+}
+
+.menu-lateral .nav-item {
+    color: var(--assistech-lateral-texto);
+    padding: .7rem 1.1rem;
+    font-size: .95rem;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    border-left: 3px solid transparent;
+}
+
+.menu-lateral .nav-item:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, .05);
+}
+
+.menu-lateral .nav-item.active {
+    color: #fff;
+    background: rgba(255, 255, 255, .09);
+    border-left-color: var(--assistech-primaria);
+    font-weight: 600;
+}
+
+.menu-lateral .icone {
+    width: 1.2rem;
+    text-align: center;
+    opacity: .9;
+}
+
+.conteudo {
+    flex: 1;
+    min-width: 0;
+    padding: 1.25rem;
+}
+
+.conteudo-cheio {
+    width: 100%;
+}
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, .45);
+    z-index: 1020;
+}
+
+@media (max-width: 991.98px) {
+    .menu-lateral {
+        position: fixed;
+        inset: 0 auto 0 0;
+        z-index: 1025;
+        transform: translateX(-100%);
+        transition: transform .2s ease;
+        overflow-y: auto;
+    }
+
+    .menu-lateral.aberto {
+        transform: translateX(0);
+    }
+
+    .conteudo {
+        padding: 1rem .75rem;
+    }
+}
+
+/* ---------------------------------------------------------------- login */
+.login-tela {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: radial-gradient(circle at 20% 20%, #1e3a8a 0%, #0b1220 55%, #05070d 100%);
+}
+
+.login-cartao {
+    width: 100%;
+    max-width: 400px;
+    background: #fff;
+    border-radius: 16px;
+    padding: 2rem 1.75rem;
+    box-shadow: 0 24px 60px rgba(2, 6, 23, .45);
+}
+
+.login-cartao h1 {
+    color: #0f172a;
+}
+
+.form-control, .form-select {
+    border-color: #cbd5e1;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--assistech-primaria);
+    box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .15);
+}
+
+/* ---------------------------------------------------------------- cartoes */
+.cartao {
+    background: #fff;
+    border: 1px solid var(--assistech-borda);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+}
+
+.cartao .cartao-cabecalho {
+    padding: .9rem 1.1rem;
+    border-bottom: 1px solid var(--assistech-borda);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.cartao .cartao-corpo {
+    padding: 1.1rem;
+}
+
+.titulo-pagina {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+}
+
+/* ---------------------------------------------------------------- tabela */
+.tabela-envolvivel {
+    overflow-x: auto;
+}
+
+.tabela-assistech {
+    margin-bottom: 0;
+    font-size: .93rem;
+}
+
+.tabela-assistech thead th {
+    background: #f8fafc;
+    border-bottom: 1px solid var(--assistech-borda);
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.tabela-assistech tbody tr:hover {
+    background: #f8fafc;
+}
+
+/* ---------------------------------------------------------------- status */
+.status-badge {
+    display: inline-block;
+    padding: .2rem .55rem;
+    border-radius: 999px;
+    font-size: .76rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.status-aberta { background: #e0e7ff; color: #3730a3; }
+.status-em_analise { background: #fef3c7; color: #92400e; }
+.status-aguardando_pecas { background: #fee2e2; color: #991b1b; }
+.status-aguardando_cliente { background: #fce7f3; color: #9d174d; }
+.status-aguardando_aprovacao { background: #ffedd5; color: #9a3412; }
+.status-em_reparo { background: #dbeafe; color: #1e40af; }
+.status-pronta_entrega { background: #dcfce7; color: #166534; }
+.status-entregue { background: #e2e8f0; color: #334155; }
+.status-cancelada { background: #fee2e2; color: #7f1d1d; }
+
+.selo-atrasada {
+    background: #fee2e2;
+    color: #991b1b;
+    border-radius: 999px;
+    font-size: .72rem;
+    padding: .1rem .45rem;
+    font-weight: 600;
+    margin-left: .35rem;
+}
+
+/* ---------------------------------------------------------------- impressao */
+.pagina-impressao {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--assistech-borda);
+    max-width: 860px;
+    margin: 0 auto;
+}
+
+@media print {
+    .topo, .menu-lateral, .overlay, .no-print, #blazor-error-ui {
+        display: none !important;
+    }
+
+    body, .assistech-shell, .conteudo {
+        background: #fff !important;
+        padding: 0 !important;
+    }
+
+    .pagina-impressao {
+        border: 0;
+        padding: 0;
+        max-width: none;
+    }
+
+    @page {
+        size: A4;
+        margin: 12mm;
+    }
+}

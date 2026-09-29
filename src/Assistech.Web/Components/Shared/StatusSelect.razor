@@ -1,0 +1,60 @@
+@using Assistech.Shared.Enums
+
+<select class="form-select form-select-sm" @onchange="AoMudar" disabled="@Desabilitado">
+    @foreach (var opcao in Opcoes)
+    {
+        <option value="@Chave(opcao)" selected="@(Chave(opcao) == Valor)">@Rotulo(opcao)</option>
+    }
+</select>
+
+@code {
+    [Parameter] public string? Valor { get; set; }
+    [Parameter] public EventCallback<string?> ValorChanged { get; set; }
+    [Parameter] public bool Desabilitado { get; set; }
+
+    private static readonly IReadOnlyList<StatusOrdemServico> Padrao =
+    [
+        StatusOrdemServico.Aberta,
+        StatusOrdemServico.EmAnalise,
+        StatusOrdemServico.AguardandoPecas,
+        StatusOrdemServico.AguardandoCliente,
+        StatusOrdemServico.AguardandoAprovacao,
+        StatusOrdemServico.EmReparo,
+        StatusOrdemServico.ProntaEntrega,
+        StatusOrdemServico.Entregue,
+        StatusOrdemServico.Cancelada
+    ];
+
+    [Parameter] public IReadOnlyList<StatusOrdemServico> Opcoes { get; set; } = Padrao;
+
+    private async Task AoMudar(ChangeEventArgs e)
+        => await ValorChanged.InvokeAsync(e.Value?.ToString());
+
+    private static string Chave(StatusOrdemServico status) => status switch
+    {
+        StatusOrdemServico.Aberta => "aberta",
+        StatusOrdemServico.EmAnalise => "em_analise",
+        StatusOrdemServico.AguardandoPecas => "aguardando_pecas",
+        StatusOrdemServico.AguardandoCliente => "aguardando_cliente",
+        StatusOrdemServico.AguardandoAprovacao => "aguardando_aprovacao",
+        StatusOrdemServico.EmReparo => "em_reparo",
+        StatusOrdemServico.ProntaEntrega => "pronta_entrega",
+        StatusOrdemServico.Entregue => "entregue",
+        StatusOrdemServico.Cancelada => "cancelada",
+        _ => "aberta"
+    };
+
+    private static string Rotulo(StatusOrdemServico status) => status switch
+    {
+        StatusOrdemServico.Aberta => "Aberta",
+        StatusOrdemServico.EmAnalise => "Em analise",
+        StatusOrdemServico.AguardandoPecas => "Aguardando pecas",
+        StatusOrdemServico.AguardandoCliente => "Aguardando cliente",
+        StatusOrdemServico.AguardandoAprovacao => "Aguardando aprovacao",
+        StatusOrdemServico.EmReparo => "Em reparo",
+        StatusOrdemServico.ProntaEntrega => "Pronta para entrega",
+        StatusOrdemServico.Entregue => "Entregue",
+        StatusOrdemServico.Cancelada => "Cancelada",
+        _ => status.ToString()
+    };
+}

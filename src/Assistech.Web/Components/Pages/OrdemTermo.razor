@@ -1,0 +1,178 @@
+﻿@page "/ordens/{Id:guid}/termo"
+@attribute [Authorize]
+@inject Assistech.Shared.Client.IAssistechApi Api
+@inject IJSRuntime JS
+
+<PageTitle>Termo da OS - Assistech</PageTitle>
+
+<div class="d-flex flex-wrap gap-2 mb-3 no-print">
+    <a class="btn btn-outline-secondary btn-sm" href="@($"/ordens/{Id}")">&#8592; Voltar para a OS</a>
+    <button class="btn btn-primary btn-sm ms-auto" @onclick="Imprimir">Imprimir</button>
+</div>
+
+@if (erro is not null)
+{
+    <div class="alert alert-danger">@erro</div>
+}
+else if (termo is null)
+{
+    <div class="cartao"><div class="cartao-corpo text-center py-5"><div class="spinner-border text-primary"></div></div></div>
+}
+else
+{
+    <div class="pagina-impressao">
+        <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3" style="border-color: @Cor(termo.EmpresaCorPrimaria) !important;">
+            <div class="d-flex align-items-center gap-3">
+                @if (termo.EmpresaTemLogo)
+                {
+                    <img src="@($"logo/{termo.EmpresaId}")" alt="Logo" style="max-height:56px;max-width:150px;object-fit:contain" />
+                }
+                <div>
+                    <h1 class="h5 mb-1" style="color: @Cor(termo.EmpresaCorPrimaria)">@termo.EmpresaNome</h1>
+                    <div class="small text-muted">
+                        @if (termo.EmpresaDocumento.Length > 0)
+                        {
+                            <div>CNPJ/CPF: @termo.EmpresaDocumento</div>
+                        }
+                        @if (termo.EmpresaTelefone.Length > 0)
+                        {
+                            <div>Tel: @termo.EmpresaTelefone</div>
+                        }
+                        @if (termo.Whatsapp.Length > 0)
+                        {
+                            <div>WhatsApp: @termo.Whatsapp</div>
+                        }
+                        @if (termo.EmpresaEndereco.Length > 0)
+                        {
+                            <div>@termo.EmpresaEndereco</div>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="text-end">
+                <div class="h5 mb-0">OS #@termo.Numero</div>
+                <div class="small text-muted">Emitido em @termo.EmitidoEm.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-6">
+                <div class="small text-uppercase text-muted">Cliente</div>
+                <div class="fw-semibold">@termo.ClienteNome</div>
+                @if (termo.ClienteDocumento.Length > 0)
+                {
+                    <div class="small">@termo.ClienteDocumento</div>
+                }
+                @if (termo.ClienteTelefone.Length > 0)
+                {
+                    <div class="small">@termo.ClienteTelefone</div>
+                }
+                @if (termo.ClienteEndereco.Length > 0)
+                {
+                    <div class="small">@termo.ClienteEndereco</div>
+                }
+            </div>
+            <div class="col-6">
+                <div class="small text-uppercase text-muted">Equipamento</div>
+                <div class="fw-semibold">@termo.EquipamentoMarca @termo.EquipamentoModelo</div>
+                <div class="small text-muted text-capitalize">@RotularTipo(termo.EquipamentoTipo)</div>
+                @if (termo.EquipamentoNumeroSerie.Length > 0)
+                {
+                    <div class="small">Serie: @termo.EquipamentoNumeroSerie</div>
+                }
+                @if (termo.EquipamentoCor.Length > 0)
+                {
+                    <div class="small">Cor: @termo.EquipamentoCor</div>
+                }
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-md-3"><div class="small text-uppercase text-muted">Entrada</div><div>@termo.DataEntrada.LocalDateTime.ToString("dd/MM/yyyy")</div></div>
+            <div class="col-6 col-md-3"><div class="small text-uppercase text-muted">Previsao</div><div>@(termo.DataPrevisao?.LocalDateTime.ToString("dd/MM/yyyy") ?? "-")</div></div>
+            <div class="col-6 col-md-3"><div class="small text-uppercase text-muted">Conclusao</div><div>@(termo.DataConclusao?.LocalDateTime.ToString("dd/MM/yyyy") ?? "-")</div></div>
+            <div class="col-6 col-md-3"><div class="small text-uppercase text-muted">Garantia</div><div>@termo.GarantiaDias dias</div></div>
+        </div>
+
+        <table class="table table-sm tabela-assistech">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th class="text-end">Qtd</th>
+                    <th class="text-end">Valor unit.</th>
+                    <th class="text-end">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in termo.Itens)
+                {
+                    <tr>
+                        <td>@item.Descricao</td>
+                        <td class="text-end">@item.Quantidade.ToString("0.##")</td>
+                        <td class="text-end">@item.ValorUnitario.ToString("C2")</td>
+                        <td class="text-end">@item.Subtotal.ToString("C2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="text-end mb-4">
+            <div>Subtotal: <strong>@termo.Subtotal.ToString("C2")</strong></div>
+            @if (termo.Desconto > 0)
+            {
+                <div>Desconto: <strong>- @termo.Desconto.ToString("C2")</strong></div>
+            }
+            <div class="h5" style="color: @Cor(termo.EmpresaCorPrimaria)">Total: @termo.ValorTotal.ToString("C2")</div>
+        </div>
+
+        @foreach (var bloco in new[] { ("Relato do cliente", termo.RelatoCliente), ("Diagnostico", termo.Diagnostico), ("Acessorios recebidos", termo.Acessorios), ("Laudo de conclusao", termo.LaudoConclusao) })
+        {
+            if (!string.IsNullOrWhiteSpace(bloco.Item2))
+            {
+                <div class="mb-3">
+                    <div class="small text-uppercase text-muted">@bloco.Item1</div>
+                    <div style="white-space:pre-wrap">@bloco.Item2</div>
+                </div>
+            }
+        }
+
+        <div class="row g-4 mt-5 pt-3">
+            <div class="col-6 text-center">
+                <div class="border-top pt-2">Assinatura do responsavel</div>
+            </div>
+            <div class="col-6 text-center">
+                <div class="border-top pt-2">Assinatura do cliente</div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private TermoOrdemServicoDto? termo;
+    private string? erro;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        erro = null;
+        termo = await Api.ObterTermoAsync(Id);
+        if (termo is null) erro = "Ordem de servico nao encontrada.";
+    }
+
+    private async Task Imprimir()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    private static string Cor(string hex) => string.IsNullOrWhiteSpace(hex) ? "#0d6efd" : hex;
+
+    private static string RotularTipo(string tipo) => tipo switch
+    {
+        "celular" => "Celular",
+        "desktop" => "Desktop",
+        "notebook" => "Notebook",
+        "tablet" => "Tablet",
+        _ => "Outro"
+    };
+}

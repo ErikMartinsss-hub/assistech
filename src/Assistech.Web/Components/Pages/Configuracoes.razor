@@ -1,0 +1,238 @@
+@page "/configuracoes"
+@attribute [Authorize]
+@inject Assistech.Shared.Client.IAssistechApi Api
+@inject Assistech.Web.Services.SessaoState Sessao
+
+<PageTitle>Minha loja - Assistech</PageTitle>
+
+<h1 class="titulo-pagina mb-3">Minha loja</h1>
+
+@if (erro is not null)
+{
+    <div class="alert alert-danger">@erro</div>
+}
+@if (aviso is not null)
+{
+    <div class="alert alert-success">@aviso</div>
+}
+
+@if (empresa is null)
+{
+    <div class="cartao"><div class="cartao-corpo text-center py-5"><div class="spinner-border text-primary"></div></div></div>
+}
+else
+{
+    <div class="row g-3">
+        <div class="col-12 col-lg-7">
+            <div class="cartao">
+                <div class="cartao-cabecalho"><span>Dados da loja</span></div>
+                <div class="cartao-corpo">
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <label class="form-label small mb-1">Nome fantasia *</label>
+                            <input class="form-control" @bind="form.Nome" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-1">CNPJ / CPF</label>
+                            <input class="form-control" @bind="form.Documento" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-1">Telefone</label>
+                            <input class="form-control" @bind="form.Telefone" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-1">WhatsApp</label>
+                            <input class="form-control" @bind="form.WhatsApp" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-1">E-mail</label>
+                            <input type="email" class="form-control" @bind="form.Email" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1">Endereco</label>
+                            <input class="form-control" @bind="form.Endereco" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1">Cor principal (#RRGGBB)</label>
+                            <div class="d-flex gap-2">
+                                <input type="color" class="form-control form-control-color" @bind="form.CorPrimaria" title="Selecionar cor" />
+                                <input class="form-control" @bind="form.CorPrimaria" />
+                            </div>
+                            <div class="form-text">Usada no topo do sistema e no termo impresso.</div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary mt-3" @onclick="SalvarDados" disabled="@salvando">
+                        @(salvando ? "Salvando..." : "Salvar dados")
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-5">
+            <div class="cartao">
+                <div class="cartao-cabecalho"><span>Logo</span></div>
+                <div class="cartao-corpo text-center">
+                    @if (empresa.TemLogo)
+                    {
+                        <img src="@($"logo/{empresa.Id}?v={DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}")"
+                             alt="Logo atual" class="img-fluid mb-3" style="max-height:150px" />
+                    }
+                    else
+                    {
+                        <div class="text-muted small mb-3">Nenhuma logo enviada.</div>
+                    }
+
+                    <InputFile OnChange="EnviarLogo" accept="image/png,image/jpeg,image/webp,image/gif" />
+
+                    @if (empresa.TemLogo)
+                    {
+                        <button class="btn btn-outline-danger btn-sm mt-3" @onclick="RemoverLogo" disabled="@salvando">Remover logo</button>
+                    }
+
+                    <div class="form-text mt-3">PNG, JPG, WebP, GIF ou SVG ate 2 MB.</div>
+                </div>
+            </div>
+
+            <div class="cartao mt-3">
+                <div class="cartao-cabecalho"><span>Conta</span></div>
+                <div class="cartao-corpo small">
+                    <dl class="row mb-0">
+                        <dt class="col-5">Usuario</dt><dd class="col-7">@Sessao.Atual?.Nome</dd>
+                        <dt class="col-5">E-mail</dt><dd class="col-7 text-break">@Sessao.Atual?.Email</dd>
+                        <dt class="col-5">Perfil</dt><dd class="col-7">@Sessao.Atual?.Perfil</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private EmpresaDto? empresa;
+    private readonly AtualizarEmpresaRequest form = new();
+    private string? erro;
+    private string? aviso;
+    private bool salvando;
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        erro = null;
+
+        try
+        {
+            empresa = await Api.ObterEmpresaAsync();
+            if (empresa is not null)
+            {
+                form.Nome = empresa.Nome;
+                form.Documento = empresa.Documento;
+                form.Telefone = empresa.Telefone;
+                form.WhatsApp = empresa.WhatsApp;
+                form.Email = empresa.Email;
+                form.Endereco = empresa.Endereco;
+                form.CorPrimaria = empresa.CorPrimaria;
+            }
+        }
+        catch (ApiException e)
+        {
+            erro = e.Message;
+        }
+    }
+
+    private async Task SalvarDados()
+    {
+        if (string.IsNullOrWhiteSpace(form.Nome))
+        {
+            erro = "Informe o nome da loja.";
+            return;
+        }
+
+        salvando = true;
+        erro = null;
+        aviso = null;
+
+        try
+        {
+            empresa = await Api.AtualizarEmpresaAsync(form);
+            Sessao.Entrar(new SessaoDto
+            {
+                Token = Sessao.Atual!.Token,
+                ExpiraEm = Sessao.Atual.ExpiraEm,
+                UsuarioId = Sessao.Atual.UsuarioId,
+                Nome = Sessao.Atual.Nome,
+                Email = Sessao.Atual.Email,
+                Perfil = Sessao.Atual.Perfil,
+                EmpresaId = empresa.Id,
+                EmpresaNome = empresa.Nome,
+                EmpresaCorPrimaria = empresa.CorPrimaria
+            });
+            aviso = "Dados salvos.";
+        }
+        catch (ApiException e)
+        {
+            erro = e.MensagemFormatada;
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+
+    private async Task EnviarLogo(InputFileChangeEventArgs e)
+    {
+        var arquivo = e.File;
+        if (arquivo is null) return;
+        if (arquivo.Size > 2 * 1024 * 1024)
+        {
+            erro = "A logo deve ter no maximo 2 MB.";
+            return;
+        }
+
+        salvando = true;
+        erro = null;
+        aviso = null;
+
+        try
+        {
+            await using var stream = arquivo.OpenReadStream(2 * 1024 * 1024);
+            await Api.EnviarLogoAsync(stream, arquivo.ContentType);
+            empresa = await Api.ObterEmpresaAsync();
+            aviso = "Logo atualizada.";
+        }
+        catch (ApiException ex)
+        {
+            erro = ex.Message;
+        }
+        catch (IOException)
+        {
+            erro = "Nao foi possivel ler o arquivo.";
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+
+    private async Task RemoverLogo()
+    {
+        salvando = true;
+        erro = null;
+        aviso = null;
+
+        try
+        {
+            empresa = await Api.RemoverLogoAsync();
+            aviso = "Logo removida.";
+        }
+        catch (ApiException e)
+        {
+            erro = e.Message;
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+}

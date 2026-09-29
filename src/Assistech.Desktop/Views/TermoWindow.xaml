@@ -1,0 +1,212 @@
+<Window x:Class="Assistech.Desktop.Views.TermoWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Termo de Ordem de Servico"
+        Height="940" Width="900" MinWidth="700"
+        WindowStartupLocation="CenterOwner"
+        FontFamily="Segoe UI"
+        Background="#E2E8F0">
+    <Window.Resources>
+        <Style x:Key="Rotulo" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="8" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="#94A3B8" />
+            <Setter Property="Margin" Value="0,0,0,2" />
+        </Style>
+
+        <Style x:Key="Valor" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Foreground" Value="#1E293B" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,0,0,2" />
+        </Style>
+
+        <Style x:Key="ValorDestaque" TargetType="TextBlock" BasedOn="{StaticResource Valor}">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="White" BorderBrush="#CBD5E1" BorderThickness="0,0,0,1" Padding="18,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Termo de Ordem de Servico" FontSize="15" FontWeight="SemiBold" Foreground="#0F172A" />
+                    <TextBlock x:Name="Subtitulo" Foreground="#64748B" FontSize="12" Text="Confira os dados antes de imprimir." />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="Fechar" Style="{StaticResource BotaoSecundario}" Padding="16,8"
+                            Click="FecharClicado" IsCancel="True" />
+                    <Button Content="Imprimir" Style="{StaticResource Botao}" Padding="18,8" Margin="8,0,0,0"
+                            Click="ImprimirClicado" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                      Padding="16">
+            <Border x:Name="Folha" Width="794" Background="White" Padding="40"
+                    BorderBrush="#CBD5E1" BorderThickness="1">
+                <StackPanel>
+
+                    <!-- cabecalho da loja -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Image x:Name="LogoImage" Grid.Column="0" Height="56" Width="56"
+                               Stretch="Uniform" HorizontalAlignment="Left" />
+
+                        <StackPanel Grid.Column="1" VerticalAlignment="Top">
+                            <TextBlock x:Name="EmpresaNome" FontSize="16" FontWeight="Bold" Foreground="#0D6EFD"
+                                       TextWrapping="Wrap" />
+                            <TextBlock x:Name="EmpresaDocumento" Style="{StaticResource Valor}" Foreground="#64748B"
+                                       FontSize="9.5" />
+                            <TextBlock x:Name="EmpresaEndereco" Style="{StaticResource Valor}" Foreground="#64748B"
+                                       FontSize="9.5" />
+                            <TextBlock x:Name="EmpresaContato" Style="{StaticResource Valor}" Foreground="#64748B"
+                                       FontSize="9.5" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Height="2" Margin="0,12,0,0" x:Name="Divisor" />
+
+                    <TextBlock x:Name="TituloTermo" FontSize="14" FontWeight="Bold" Margin="0,10,0,0"
+                               Foreground="#0D6EFD" />
+
+                    <!-- cliente / equipamento / atendimento -->
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                            <TextBlock Style="{StaticResource Rotulo}" Text="CLIENTE" />
+                            <TextBlock x:Name="ClienteNome" Style="{StaticResource ValorDestaque}" />
+                            <TextBlock x:Name="ClienteDocumento" Style="{StaticResource Valor}" />
+                            <TextBlock x:Name="ClienteTelefone" Style="{StaticResource Valor}" />
+                            <TextBlock x:Name="ClienteEndereco" Style="{StaticResource Valor}" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                            <TextBlock Style="{StaticResource Rotulo}" Text="EQUIPAMENTO" />
+                            <TextBlock x:Name="EquipamentoDescricao" Style="{StaticResource ValorDestaque}" />
+                            <TextBlock x:Name="EquipamentoCor" Style="{StaticResource Valor}" />
+                            <TextBlock x:Name="EquipamentoSerie" Style="{StaticResource Valor}" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Style="{StaticResource Rotulo}" Text="ATENDIMENTO" />
+                            <TextBlock x:Name="DataEntrada" Style="{StaticResource Valor}" />
+                            <TextBlock x:Name="DataPrevisao" Style="{StaticResource Valor}" />
+                            <TextBlock x:Name="StatusTermo" Style="{StaticResource ValorDestaque}" />
+                            <TextBlock x:Name="Garantia" Style="{StaticResource Valor}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- servico -->
+                    <StackPanel Margin="0,12,0,0">
+                        <TextBlock Style="{StaticResource Rotulo}" Text="SERVICO SOLICITADO" />
+                        <TextBlock x:Name="TipoServico" Style="{StaticResource ValorDestaque}" />
+                        <TextBlock x:Name="RelatoCliente" Style="{StaticResource Valor}" />
+                    </StackPanel>
+
+                    <!-- itens -->
+                    <Grid Margin="0,16,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1"
+                                Padding="0,4">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="38" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="44" />
+                                    <ColumnDefinition Width="74" />
+                                    <ColumnDefinition Width="88" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Item" Style="{StaticResource Rotulo}" Margin="6,0" />
+                                <TextBlock Grid.Column="1" Text="Descricao" Style="{StaticResource Rotulo}" />
+                                <TextBlock Grid.Column="2" Text="Qtd" Style="{StaticResource Rotulo}" TextAlignment="Center" />
+                                <TextBlock Grid.Column="3" Text="Unitario" Style="{StaticResource Rotulo}" TextAlignment="Right" />
+                                <TextBlock Grid.Column="4" Text="Total" Style="{StaticResource Rotulo}" TextAlignment="Right" Margin="0,0,6,0" />
+                            </Grid>
+                        </Border>
+
+                        <StackPanel x:Name="ListaItens" Grid.Row="1" />
+                    </Grid>
+
+                    <!-- totais -->
+                    <Grid Margin="0,12,0,0" HorizontalAlignment="Right">
+                        <StackPanel Width="220">
+                            <TextBlock x:Name="SubtotalTexto" Style="{StaticResource Valor}" TextAlignment="Right" />
+                            <TextBlock x:Name="DescontoTexto" Style="{StaticResource Valor}" TextAlignment="Right" />
+                            <TextBlock x:Name="TotalTexto" FontSize="14" FontWeight="Bold" TextAlignment="Right"
+                                       Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- laudos -->
+                    <StackPanel Margin="0,14,0,0">
+                        <StackPanel x:Name="BlocoDiagnostico" Margin="0,0,0,8">
+                            <TextBlock Style="{StaticResource Rotulo}" Text="DIAGNOSTICO" />
+                            <TextBlock x:Name="DiagnosticoTexto" Style="{StaticResource Valor}" />
+                        </StackPanel>
+                        <StackPanel x:Name="BlocoLaudo" Margin="0,0,0,8">
+                            <TextBlock Style="{StaticResource Rotulo}" Text="LAUDO DE CONCLUSAO" />
+                            <TextBlock x:Name="LaudoTexto" Style="{StaticResource Valor}" />
+                        </StackPanel>
+                        <StackPanel x:Name="BlocoAcessorios">
+                            <TextBlock Style="{StaticResource Rotulo}" Text="ACESSORIOS RECEBIDOS COM O EQUIPAMENTO" />
+                            <TextBlock x:Name="AcessoriosTexto" Style="{StaticResource Valor}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- assinaturas -->
+                    <Grid Margin="0,40,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <Border Height="1" Width="200" HorizontalAlignment="Left" x:Name="LinhaTecnico" />
+                            <TextBlock x:Name="NomeTecnico" Style="{StaticResource ValorDestaque}" Margin="0,4,0,0" />
+                            <TextBlock Text="Responsavel tecnico" Style="{StaticResource Valor}" Foreground="#94A3B8"
+                                       FontSize="9" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <Border Height="1" Width="200" HorizontalAlignment="Left" x:Name="LinhaCliente" />
+                            <TextBlock x:Name="NomeCliente" Style="{StaticResource ValorDestaque}" Margin="0,4,0,0" />
+                            <TextBlock Text="Cliente" Style="{StaticResource Valor}" Foreground="#94A3B8" FontSize="9" />
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock x:Name="Rodape" Style="{StaticResource Valor}" Foreground="#94A3B8" FontSize="8.5"
+                               TextAlignment="Center" Margin="0,20,0,0" />
+
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
+    </Grid>
+</Window>

@@ -1,0 +1,100 @@
+<Window x:Class="Assistech.Desktop.Views.ShellWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:Assistech.Desktop.Views"
+        xmlns:conv="clr-namespace:Assistech.Desktop.Converters"
+        Title="Assistech"
+        Height="760" Width="1280" MinHeight="600" MinWidth="1000"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI"
+        Background="{StaticResource BrushFundo}">
+
+    <Window.Resources>
+        <conv:IgualConverter x:Key="Igual" />
+        <conv:BooleanoVisibilidadeConverter x:Key="BoolVis" />
+        <conv:BooleanoVisibilidadeConverter x:Key="BoolVisInvertido" />
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="232" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- menu lateral -->
+        <Border Grid.Column="0" Background="{StaticResource BrushLateral}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="16,20,16,24">
+                    <Image Source="{Binding Logo}" Height="36" Width="36" Stretch="Uniform"
+                           Visibility="{Binding Logo, Converter={StaticResource BoolVis}}" Margin="0,0,10,0" />
+                    <Border Width="36" Height="36" CornerRadius="9" Background="{StaticResource BrushPrimaria}"
+                            Visibility="{Binding Logo, Converter={StaticResource BoolVisInvertido}, ConverterParameter=invert}">
+                        <TextBlock Text="A" Foreground="White" FontSize="19" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Empresa}" Foreground="White" FontWeight="SemiBold" FontSize="13"
+                                   TextTrimming="CharacterEllipsis" MaxWidth="120" />
+                        <TextBlock Text="Assistech" Foreground="#7D8B9C" FontSize="11" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Row="1">
+                    <RadioButton Style="{StaticResource ItemMenu}" GroupName="menu" Content="Ordens de servico"
+                                 IsChecked="{Binding Pagina, Converter={StaticResource Igual}, ConverterParameter=Ordens, Mode=TwoWay}"
+                                 Command="{Binding IrParaOrdensCommand}" />
+                    <RadioButton Style="{StaticResource ItemMenu}" GroupName="menu" Content="Clientes"
+                                 IsChecked="{Binding Pagina, Converter={StaticResource Igual}, ConverterParameter=Clientes, Mode=TwoWay}"
+                                 Command="{Binding IrParaClientesCommand}" />
+                    <RadioButton Style="{StaticResource ItemMenu}" GroupName="menu" Content="Minha loja"
+                                 IsChecked="{Binding Pagina, Converter={StaticResource Igual}, ConverterParameter=Loja, Mode=TwoWay}"
+                                 Command="{Binding IrParaLojaCommand}" />
+                </StackPanel>
+
+                <Border Grid.Row="3" Background="#161F2A" Padding="16,14">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="32" Height="32" CornerRadius="16" Background="{StaticResource BrushPrimaria}">
+                            <TextBlock Text="{Binding Inicial}" Foreground="White" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Usuario}" Foreground="White" FontSize="12"
+                                       TextTrimming="CharacterEllipsis" MaxWidth="110" />
+                            <TextBlock Text="Sair" Foreground="#7D8B9C" FontSize="11" Cursor="Hand"
+                                       MouseLeftButtonUp="SairClicado" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- conteudo -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource BrushBorda}" BorderThickness="0,0,0,1"
+                    Padding="24,14">
+                <TextBlock Text="{Binding PaginaTitulo}" Style="{StaticResource Rotulo}" FontSize="12" />
+            </Border>
+
+            <Grid Grid.Row="1">
+                <views:OrdensView DataContext="{Binding Paginas[0]}"
+                                  Visibility="{Binding MostrarOrdens, Converter={StaticResource BoolVis}}" />
+                <views:ClientesView DataContext="{Binding Paginas[1]}"
+                                    Visibility="{Binding MostrarClientes, Converter={StaticResource BoolVis}}" />
+                <views:LojaView DataContext="{Binding Paginas[2]}"
+                                Visibility="{Binding MostrarLoja, Converter={StaticResource BoolVis}}" />
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

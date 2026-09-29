@@ -1,0 +1,130 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject Assistech.Web.Services.SessaoState Sessao
+
+<div class="assistech-shell">
+    <header class="topo @(Sessao.Atual is null ? "topo-simples" : "")">
+        <div class="container-fluid">
+            <div class="d-flex align-items-center gap-2 py-2">
+                <button class="btn btn-light btn-sm d-lg-none" @onclick="AlternarMenu" aria-label="Abrir menu">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <a class="marca d-flex align-items-center gap-2 text-decoration-none" href="/ordens">
+                    @if (Sessao.Atual is { } s)
+                    {
+                        @if (UrlLogo is not null)
+                        {
+                            <img src="@UrlLogo" alt="Logo da loja" class="logo-mini" />
+                        }
+                        <span class="marca-texto">
+                            <strong class="text-white">@s.EmpresaNome</strong>
+                            <small class="d-none d-sm-inline text-white-50">Assistencia tecnica</small>
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="logo-placeholder">A</span>
+                        <span class="marca-texto">
+                            <strong>Assistech</strong>
+                            <small class="d-none d-sm-inline">Gestao de assistencia tecnica</small>
+                        </span>
+                    }
+                </a>
+
+                <div class="ms-auto d-flex align-items-center gap-2">
+                    @if (Sessao.Autenticado)
+                    {
+                        <a class="btn btn-light btn-sm d-none d-sm-inline-flex" href="/ordens/nova">+ Nova OS</a>
+
+                        <div class="position-relative">
+                            <button class="btn btn-outline-light btn-sm" @onclick="AlternarUsuario">
+                                @Sessao.Atual!.Nome
+                            </button>
+                            @if (MenuUsuarioAberto)
+                            {
+                                <div class="menu-usuario">
+                                    <div class="px-3 py-2 small text-muted">@Sessao.Atual.Email</div>
+                                    <hr class="my-1" />
+                                    <a class="item" href="/configuracoes" @onclick="FecharMenus">Minha loja</a>
+                                    <button class="item" @onclick="Sair">Sair</button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </header>
+
+    @if (Sessao.Autenticado)
+    {
+        <div class="corpo">
+            <nav class="menu-lateral @(MenuAberto ? "aberto" : "")">
+                <div class="d-lg-none p-3 border-bottom d-flex justify-content-end">
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="AlternarMenu">Fechar</button>
+                </div>
+                <NavMenu />
+            </nav>
+
+            <main class="conteudo">
+                @Body
+            </main>
+        </div>
+    }
+    else
+    {
+        <main class="conteudo conteudo-cheio">
+            @Body
+        </main>
+    }
+</div>
+
+@if (MenuAberto)
+{
+    <div class="overlay d-lg-none" @onclick="AlternarMenu"></div>
+}
+
+<div id="blazor-error-ui">
+    Ocorreu um erro inesperado.
+    <a href="" class="reload">Recarregar</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private bool MenuAberto;
+    private bool MenuUsuarioAberto;
+    private string? UrlLogo;
+
+    protected override void OnInitialized() => Sessao.Alterada += AoMudarSessao;
+
+    private void AoMudarSessao()
+    {
+        UrlLogo = Sessao.Atual is { } s && s.EmpresaId != Guid.Empty
+            ? $"logo/{s.EmpresaId}?v={DateTimeOffset.UtcNow:yyyyMMddHHmmss}"
+            : null;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void AlternarMenu()
+    {
+        MenuAberto = !MenuAberto;
+        MenuUsuarioAberto = false;
+    }
+
+    private void AlternarUsuario()
+    {
+        MenuUsuarioAberto = !MenuUsuarioAberto;
+        MenuAberto = false;
+    }
+
+    private void FecharMenus()
+    {
+        MenuUsuarioAberto = false;
+        MenuAberto = false;
+    }
+
+    private void Sair() => Sessao.Sair();
+
+    public void Dispose() => Sessao.Alterada -= AoMudarSessao;
+}

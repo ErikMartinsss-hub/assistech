@@ -1,0 +1,106 @@
+@page "/entrar"
+@inject Assistech.Shared.Client.IAssistechApi Api
+@inject Assistech.Web.Services.SessaoState Sessao
+@inject NavigationManager Navigation
+@using System.ComponentModel.DataAnnotations
+
+<PageTitle>Entrar - Assistech</PageTitle>
+
+<div class="login-tela">
+    <div class="login-cartao">
+        <div class="text-center mb-4">
+            <span class="logo-placeholder grande">A</span>
+            <h1 class="h3 mt-3 mb-1">Assistech</h1>
+            <p class="text-muted mb-0">Gestao de assistencia tecnica</p>
+        </div>
+
+        <EditForm Model="form" OnValidSubmit="Entrar">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label class="form-label" for="email">E-mail</label>
+                <InputText id="email" class="form-control" type="email" @bind-Value="form.Email"
+                           autocomplete="username" placeholder="seu e-mail profissional" />
+                <ValidationMessage For="() => form.Email" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="senha">Senha</label>
+                <InputText id="senha" class="form-control" type="password" @bind-Value="form.Senha"
+                           autocomplete="current-password" />
+                <ValidationMessage For="() => form.Senha" />
+            </div>
+
+            @if (erro is not null)
+            {
+                <div class="alert alert-danger py-2" role="alert">@erro</div>
+            }
+
+            <button class="btn btn-primary w-100" type="submit" disabled="@Ocupado">
+                @if (Ocupado)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    <span>Entrando...</span>
+                }
+                else
+                {
+                    <span>Entrar</span>
+                }
+            </button>
+        </EditForm>
+
+        <p class="text-center text-muted small mt-4 mb-0">
+            O acesso e liberado pelo administrador da loja.
+        </p>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "retorno")]
+    public string? Retorno { get; set; }
+
+    private readonly LoginModel form = new();
+    private string? erro;
+    private bool Ocupado;
+
+    protected override void OnInitialized()
+    {
+        if (Sessao.Autenticado)
+            Navigation.NavigateTo("/ordens");
+    }
+
+    private async Task Entrar()
+    {
+        Ocupado = true;
+        erro = null;
+
+        try
+        {
+            var sessao = await Api.LoginAsync(new LoginRequest(form.Email.Trim(), form.Senha));
+            Sessao.Entrar(sessao);
+            Navigation.NavigateTo(string.IsNullOrWhiteSpace(Retorno) ? "/ordens" : "/" + Retorno.TrimStart('/'));
+        }
+        catch (ApiException e)
+        {
+            erro = e.Message;
+        }
+        catch (TaskCanceledException)
+        {
+            erro = "O servidor demorou para responder. Tente novamente.";
+        }
+        finally
+        {
+            Ocupado = false;
+        }
+    }
+
+    private sealed class LoginModel
+    {
+        [Required(ErrorMessage = "Informe o e-mail")]
+        [EmailAddress(ErrorMessage = "E-mail invalido")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Informe a senha")]
+        public string Senha { get; set; } = string.Empty;
+    }
+}

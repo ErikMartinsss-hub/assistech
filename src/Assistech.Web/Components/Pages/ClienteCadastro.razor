@@ -1,0 +1,296 @@
+@page "/clientes/{Id:guid}"
+@attribute [Authorize]
+@inject Assistech.Shared.Client.IAssistechApi Api
+
+<PageTitle>Cadastro do cliente - Assistech</PageTitle>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <a class="btn btn-outline-secondary btn-sm" href="/clientes">&#8592; Clientes</a>
+    <h1 class="titulo-pagina me-auto">@(cliente?.Nome ?? "Cadastro do cliente")</h1>
+    <a class="btn btn-primary" href="@($"/ordens/nova")">+ Nova OS</a>
+</div>
+
+@if (erro is not null)
+{
+    <div class="alert alert-danger">@erro</div>
+}
+
+@if (cliente is null)
+{
+    <div class="cartao"><div class="cartao-corpo text-center py-5"><div class="spinner-border text-primary"></div></div></div>
+}
+else
+{
+    <div class="row g-3">
+        <div class="col-12 col-lg-4">
+            <div class="cartao h-100">
+                <div class="cartao-cabecalho"><span>Dados</span></div>
+                <div class="cartao-corpo">
+                    <dl class="row mb-0 small">
+                        <dt class="col-5">Telefone</dt><dd class="col-7">@(cliente.Telefone.Length > 0 ? cliente.Telefone : "-")</dd>
+                        <dt class="col-5">Documento</dt><dd class="col-7">@(cliente.Documento.Length > 0 ? cliente.Documento : "-")</dd>
+                        <dt class="col-5">E-mail</dt><dd class="col-7 text-break">@(cliente.Email.Length > 0 ? cliente.Email : "-")</dd>
+                        <dt class="col-5">Endereco</dt><dd class="col-7">@(cliente.Endereco.Length > 0 ? cliente.Endereco : "-")</dd>
+                        <dt class="col-5">Equipamentos</dt><dd class="col-7">@cliente.TotalEquipamentos</dd>
+                        <dt class="col-5">Ordens</dt><dd class="col-7">@cliente.TotalOrdens</dd>
+                    </dl>
+                    @if (cliente.Observacoes.Length > 0)
+                    {
+                        <hr />
+                        <div class="small text-muted text-uppercase">Observacoes</div>
+                        <div style="white-space:pre-wrap">@cliente.Observacoes</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-8">
+            <div class="cartao">
+                <div class="cartao-cabecalho">
+                    <span>Equipamentos</span>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="NovoEquipamento">+ Adicionar</button>
+                </div>
+
+                @if (equipamentos.Count == 0)
+                {
+                    <div class="cartao-corpo text-muted small text-center py-4">
+                        Nenhum equipamento cadastrado para este cliente.
+                    </div>
+                }
+                else
+                {
+                    <div class="tabela-envolvivel">
+                        <table class="table tabela-assistech align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Marca / Modelo</th>
+                                    <th>Serie</th>
+                                    <th class="text-center">OS</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var e in equipamentos)
+                                {
+                                    <tr>
+                                        <td class="text-capitalize">@RotularTipo(e.Tipo)</td>
+                                        <td>@e.Marca @e.Modelo</td>
+                                        <td class="text-muted">@(e.NumeroSerie.Length > 0 ? e.NumeroSerie : "-")</td>
+                                        <td class="text-center">@e.TotalOrdens</td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => EditarEquipamento(e)">Editar</button>
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => ExcluirEquipamento(e)">Excluir</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+            <div class="cartao mt-3">
+                <div class="cartao-cabecalho"><span>Historico de ordens</span></div>
+                @if (ordens.Count == 0)
+                {
+                    <div class="cartao-corpo text-muted small text-center py-4">Nenhuma ordem registrada.</div>
+                }
+                else
+                {
+                    <div class="tabela-envolvivel">
+                        <table class="table tabela-assistech align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>OS</th>
+                                    <th>Equipamento</th>
+                                    <th>Status</th>
+                                    <th>Entrada</th>
+                                    <th class="text-end">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var os in ordens)
+                                {
+                                    <tr>
+                                        <td><a href="@($"/ordens/{os.Id}")">#@os.Numero</a></td>
+                                        <td>@os.Equipamento</td>
+                                        <td><StatusBadge Status="@os.Status" /></td>
+                                        <td class="text-nowrap">@os.DataEntrada.LocalDateTime.ToString("dd/MM/yy")</td>
+                                        <td class="text-end">@os.ValorTotal.ToString("C2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@if (editando is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(15,23,42,.5)">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(editando.Id.HasValue ? "Editar equipamento" : "Novo equipamento")</h5>
+                    <button class="btn-close" @onclick="() => editando = null"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label small mb-1">Tipo</label>
+                            <select class="form-select" @bind="editando.Tipo">
+                                <option value="celular">Celular</option>
+                                <option value="notebook">Notebook</option>
+                                <option value="desktop">Desktop</option>
+                                <option value="tablet">Tablet</option>
+                                <option value="outro">Outro</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-1">Cor</label>
+                            <input class="form-control" @bind="editando.Cor" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-1">Marca *</label>
+                            <input class="form-control" @bind="editando.Marca" placeholder="Samsung, Dell, Apple..." />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-1">Modelo *</label>
+                            <input class="form-control" @bind="editando.Modelo" placeholder="Galaxy S21, Inspiron 15..." />
+                        </div>
+                        <div class="col-8">
+                            <label class="form-label small mb-1">Numero de serie</label>
+                            <input class="form-control" @bind="editando.NumeroSerie" />
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small mb-1">Ano</label>
+                            <input type="number" class="form-control" @bind="editando.Ano" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1">Observacoes</label>
+                            <textarea class="form-control" rows="2" @bind="editando.Observacoes"></textarea>
+                        </div>
+                    </div>
+                    @if (erroForm is not null)
+                    {
+                        <div class="alert alert-danger py-2 mt-2 mb-0">@erroForm</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary" @onclick="() => editando = null">Cancelar</button>
+                    <button class="btn btn-primary" @onclick="SalvarEquipamento" disabled="@salvando">@(salvando ? "Salvando..." : "Salvar")</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    [Parameter] [SupplyParameterFromQuery(Name = "novoEquipamento")] public bool AbrirNovoEquipamento { get; set; }
+
+    private ClienteDto? cliente;
+    private List<EquipamentoDto> equipamentos = new();
+    private List<OrdemServicoResumo> ordens = new();
+    private EquipamentoInput? editando;
+    private string? erro;
+    private string? erroForm;
+    private bool salvando;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        erro = null;
+        editando = null;
+
+        try
+        {
+            cliente = await Api.ObterClienteAsync(Id);
+            if (cliente is null)
+            {
+                erro = "Cliente nao encontrado.";
+                return;
+            }
+
+            equipamentos = (await Api.ListarEquipamentosDoClienteAsync(Id)).ToList();
+            ordens = (await Api.ListarOrdensAsync(new OrdemServicoFiltro { ClienteId = Id, TamanhoPagina = 50 })).Itens.ToList();
+
+            if (AbrirNovoEquipamento)
+                NovoEquipamento();
+        }
+        catch (ApiException e)
+        {
+            erro = e.Message;
+        }
+    }
+
+    private void NovoEquipamento() => editando = new EquipamentoInput { ClienteId = Id };
+
+    private void EditarEquipamento(EquipamentoDto e) => editando = new EquipamentoInput
+    {
+        Id = e.Id,
+        ClienteId = e.ClienteId,
+        Tipo = e.Tipo,
+        Marca = e.Marca,
+        Modelo = e.Modelo,
+        NumeroSerie = e.NumeroSerie,
+        Cor = e.Cor,
+        Ano = e.Ano,
+        Observacoes = e.Observacoes
+    };
+
+    private async Task SalvarEquipamento()
+    {
+        if (editando is null) return;
+        if (string.IsNullOrWhiteSpace(editando.Marca) || string.IsNullOrWhiteSpace(editando.Modelo))
+        {
+            erroForm = "Informe a marca e o modelo.";
+            return;
+        }
+
+        salvando = true;
+        erroForm = null;
+
+        try
+        {
+            await Api.SalvarEquipamentoAsync(editando);
+            editando = null;
+            equipamentos = (await Api.ListarEquipamentosDoClienteAsync(Id)).ToList();
+            cliente = await Api.ObterClienteAsync(Id);
+        }
+        catch (ApiException e)
+        {
+            erroForm = e.MensagemFormatada;
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+
+    private async Task ExcluirEquipamento(EquipamentoDto e)
+    {
+        try
+        {
+            await Api.ExcluirEquipamentoAsync(e.Id);
+            equipamentos = (await Api.ListarEquipamentosDoClienteAsync(Id)).ToList();
+            cliente = await Api.ObterClienteAsync(Id);
+        }
+        catch (ApiException ex)
+        {
+            erro = ex.Message;
+        }
+    }
+
+    private static string RotularTipo(string tipo) => tipo switch
+    {
+        "celular" => "Celular",
+        "notebook" => "Notebook",
+        "desktop" => "Desktop",
+        "tablet" => "Tablet",
+        _ => "Outro"
+    };
+}

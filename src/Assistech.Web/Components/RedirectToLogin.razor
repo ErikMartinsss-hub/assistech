@@ -1,0 +1,9 @@
+@inject NavigationManager Navigation
+
+@code {
+    protected override void OnInitialized()
+    {
+        var destino = Navigation.ToBaseRelativePath(Navigation.Uri);
+        Navigation.NavigateTo($"/entrar?retorno={Uri.EscapeDataString(destino)}", forceLoad: false, replace: true);
+    }
+}

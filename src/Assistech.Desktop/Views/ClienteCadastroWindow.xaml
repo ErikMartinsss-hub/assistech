@@ -1,0 +1,204 @@
+<Window x:Class="Assistech.Desktop.Views.ClienteCadastroWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:Assistech.Desktop.Converters"
+        Title="{Binding Titulo}"
+        Height="780" Width="880" MinHeight="620"
+        WindowStartupLocation="CenterOwner"
+        FontFamily="Segoe UI"
+        Background="{StaticResource BrushFundo}">
+    <Window.Resources>
+        <conv:NaoVazioVisibilidadeConverter x:Key="NaoVazioVis" />
+    </Window.Resources>
+
+    <Grid Margin="22,20,22,18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="{Binding Titulo}" Style="{StaticResource Titulo}" />
+                <TextBlock Text="Dados de contato e equipamentos vinculados."
+                           Foreground="#6B7A8D" FontSize="12" />
+            </StackPanel>
+            <Button Grid.Column="1" Content="Fechar" Style="{StaticResource BotaoSecundario}" Padding="16,8"
+                    VerticalAlignment="Top" Click="FecharClicado" IsCancel="True" />
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="18" />
+                <ColumnDefinition Width="3*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- dados do cliente -->
+            <Border Grid.Column="0" Background="White" BorderBrush="{StaticResource BrushBorda}" BorderThickness="1"
+                    CornerRadius="8" Padding="18">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Rotulo}" Text="DADOS DO CLIENTE" />
+
+                    <TextBlock Style="{StaticResource Rotulo}" Text="NOME *" Margin="0,4,0,3" />
+                    <TextBox Text="{Binding Nome, UpdateSourceTrigger=PropertyChanged}" Padding="9,6" />
+
+                    <Grid Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Style="{StaticResource Rotulo}" Text="CPF / CNPJ" />
+                            <TextBox Text="{Binding Documento, UpdateSourceTrigger=PropertyChanged}" Padding="9,6" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Style="{StaticResource Rotulo}" Text="TELEFONE" />
+                            <TextBox Text="{Binding Telefone, UpdateSourceTrigger=PropertyChanged}" Padding="9,6" />
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Margin="0,12,0,0">
+                        <TextBlock Style="{StaticResource Rotulo}" Text="E-MAIL" />
+                        <TextBox Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" Padding="9,6" />
+                    </StackPanel>
+
+                    <StackPanel Margin="0,12,0,0">
+                        <TextBlock Style="{StaticResource Rotulo}" Text="ENDERECO" />
+                        <TextBox Text="{Binding Endereco, UpdateSourceTrigger=PropertyChanged}" Padding="9,6" />
+                    </StackPanel>
+
+                    <StackPanel Margin="0,12,0,0">
+                        <TextBlock Style="{StaticResource Rotulo}" Text="OBSERVACOES" />
+                        <TextBox Text="{Binding Observacoes, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
+                                 TextWrapping="Wrap" Height="70" VerticalContentAlignment="Top" Padding="9,6" />
+                    </StackPanel>
+
+                    <Border Background="#FDECEF" CornerRadius="6" Padding="12,8" Margin="0,14,0,0"
+                            Visibility="{Binding Erro, Converter={StaticResource NaoVazioVis}}">
+                        <TextBlock Text="{Binding Erro}" Foreground="#B02A37" FontSize="12" TextWrapping="Wrap" />
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- equipamentos -->
+            <Border Grid.Column="2" Background="White" BorderBrush="{StaticResource BrushBorda}" BorderThickness="1"
+                    CornerRadius="8" Padding="18">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Rotulo}" Text="EQUIPAMENTOS" />
+
+                    <TextBlock Text="Vincule os aparelhos que este cliente costuma trazer para manutencao."
+                               FontSize="11" Foreground="#94A3B8" Margin="0,0,0,10" />
+
+                    <Border Background="#F8FAFC" CornerRadius="6" Padding="6" MaxHeight="220"
+                            Visibility="{Binding Equipamentos, Converter={StaticResource NaoVazioVis}}">
+                        <ListBox ItemsSource="{Binding Equipamentos}" BorderThickness="0" Background="Transparent"
+                                 MaxHeight="208" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="8,5">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{Binding Marca}" FontWeight="SemiBold" FontSize="12.5" />
+                                            <TextBlock FontSize="11" Foreground="#6B7A8D" TextTrimming="CharacterEllipsis">
+                                                <Run Text="{Binding Tipo, Mode=OneWay}" />
+                                                <Run Text=" - " />
+                                                <Run Text="{Binding Modelo, Mode=OneWay}" />
+                                                <Run Text=" | " />
+                                                <Run Text="{Binding TotalOrdens, Mode=OneWay}" />
+                                                <Run Text=" OS" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="&#x2715;" Background="Transparent"
+                                                BorderThickness="0" Foreground="#DC3545" Cursor="Hand"
+                                                Click="ExcluirEquipamentoClicado" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+
+                    <TextBlock Text="Nenhum equipamento cadastrado."
+                               FontSize="11.5" Foreground="#94A3B8" Margin="0,8,0,0"
+                               Visibility="{Binding Equipamentos, Converter={StaticResource NaoVazioVis}, ConverterParameter=invert}" />
+
+                    <Separator Margin="0,18,0,14" Background="#EEF1F5" />
+
+                    <TextBlock Style="{StaticResource Rotulo}" Text="ADICIONAR EQUIPAMENTO" />
+
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="130" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Style="{StaticResource Rotulo}" Text="TIPO" />
+                            <ComboBox ItemsSource="{Binding TiposEquipamento}" SelectedItem="{Binding EqTipo}"
+                                      Padding="8,5" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Style="{StaticResource Rotulo}" Text="MARCA" />
+                            <TextBox Text="{Binding EqMarca, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" />
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Margin="0,10,0,0">
+                        <TextBlock Style="{StaticResource Rotulo}" Text="MODELO" />
+                        <TextBox Text="{Binding EqModelo, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" />
+                    </StackPanel>
+
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="90" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Style="{StaticResource Rotulo}" Text="NUMERO DE SERIE" />
+                            <TextBox Text="{Binding EqSerie, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Style="{StaticResource Rotulo}" Text="COR" />
+                            <TextBox Text="{Binding EqCor, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Style="{StaticResource Rotulo}" Text="ANO" />
+                            <TextBox Text="{Binding EqAno, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" />
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Margin="0,10,0,0">
+                        <TextBlock Style="{StaticResource Rotulo}" Text="OBSERVACOES DO APARELHO" />
+                        <TextBox Text="{Binding EqObservacoes, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+                        <Button Content="Limpar" Style="{StaticResource BotaoSecundario}" Padding="14,7"
+                                Click="LimparEquipamentoClicado" />
+                        <Button Content="Adicionar equipamento" Style="{StaticResource Botao}" Padding="16,7"
+                                Margin="8,0,0,0" Click="SalvarEquipamentoClicado" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="Fechar" Style="{StaticResource BotaoSecundario}" Padding="18,9"
+                    Click="FecharClicado" IsCancel="True" />
+            <Button Content="Salvar cliente" Style="{StaticResource Botao}" Padding="20,9" Margin="10,0,0,0"
+                    Click="SalvarClicado" IsDefault="True" IsEnabled="{Binding PodeSalvar}" />
+        </StackPanel>
+    </Grid>
+</Window>

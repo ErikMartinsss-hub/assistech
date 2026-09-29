@@ -1,0 +1,19 @@
+<span class="status-badge status-@Status">@Rotulo</span>
+
+@code {
+    [Parameter] public string? Status { get; set; }
+
+    private string Rotulo => Status switch
+    {
+        "aberta" => "Aberta",
+        "em_analise" => "Em analise",
+        "aguardando_pecas" => "Aguardando pecas",
+        "aguardando_cliente" => "Aguardando cliente",
+        "aguardando_aprovacao" => "Aguardando aprovacao",
+        "em_reparo" => "Em reparo",
+        "pronta_entrega" => "Pronta para entrega",
+        "entregue" => "Entregue",
+        "cancelada" => "Cancelada",
+        _ => Status ?? "-"
+    };
+}

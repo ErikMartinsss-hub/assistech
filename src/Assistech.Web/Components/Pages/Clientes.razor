@@ -1,0 +1,231 @@
+@page "/clientes"
+@attribute [Authorize]
+@inject Assistech.Shared.Client.IAssistechApi Api
+@inject NavigationManager Navigation
+
+<PageTitle>Clientes - Assistech</PageTitle>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <h1 class="titulo-pagina me-auto">Clientes</h1>
+    <button class="btn btn-primary" @onclick="Novo">+ Novo cliente</button>
+</div>
+
+<div class="cartao mb-3">
+    <div class="cartao-corpo">
+        <input class="form-control" placeholder="Buscar por nome, telefone, documento ou e-mail"
+               value="@busca" @oninput="AoBuscar" />
+    </div>
+</div>
+
+@if (erro is not null)
+{
+    <div class="alert alert-danger">@erro</div>
+}
+
+<div class="cartao">
+    <div class="cartao-cabecalho"><span>@resultado.Total cliente(s)</span></div>
+
+    @if (Ocupado)
+    {
+        <div class="cartao-corpo text-center py-5"><div class="spinner-border text-primary"></div></div>
+    }
+    else if (resultado.Itens.Count == 0)
+    {
+        <div class="cartao-corpo text-center py-5 text-muted">Nenhum cliente encontrado.</div>
+    }
+    else
+    {
+        <div class="tabela-envolvivel">
+            <table class="table tabela-assistech align-middle">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Telefone</th>
+                        <th>E-mail</th>
+                        <th class="text-center">Equipamentos</th>
+                        <th class="text-center">OS</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in resultado.Itens)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@c.Nome</td>
+                            <td>@(c.Telefone.Length > 0 ? c.Telefone : "-")</td>
+                            <td class="text-truncate" style="max-width:220px">@(c.Email.Length > 0 ? c.Email : "-")</td>
+                            <td class="text-center">@c.TotalEquipamentos</td>
+                            <td class="text-center">@c.TotalOrdens</td>
+                            <td class="text-end text-nowrap">
+                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => Editar(c)">Editar</button>
+                                <a class="btn btn-sm btn-outline-primary" href="@($"/clientes/{c.Id}")">Abrir</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (resultado.TotalPaginas > 1)
+        {
+            <div class="cartao-corpo d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-outline-secondary" disabled="@(resultado.Pagina <= 1)" @onclick="() => MudarPagina(-1)">Anterior</button>
+                <span class="small text-muted">Pagina @resultado.Pagina de @resultado.TotalPaginas</span>
+                <button class="btn btn-sm btn-outline-secondary" disabled="@(resultado.Pagina >= resultado.TotalPaginas)" @onclick="() => MudarPagina(1)">Proxima</button>
+            </div>
+        }
+    }
+</div>
+
+@if (editando is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(15,23,42,.5)">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(editando.Id.HasValue ? "Editar cliente" : "Novo cliente")</h5>
+                    <button class="btn-close" @onclick="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <label class="form-label small mb-1">Nome *</label>
+                            <input class="form-control" @bind="editando.Nome" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-1">Telefone</label>
+                            <input class="form-control" @bind="editando.Telefone" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-1">CPF / CNPJ</label>
+                            <input class="form-control" @bind="editando.Documento" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1">E-mail</label>
+                            <input type="email" class="form-control" @bind="editando.Email" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1">Endereco</label>
+                            <input class="form-control" @bind="editando.Endereco" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1">Observacoes</label>
+                            <textarea class="form-control" rows="2" @bind="editando.Observacoes"></textarea>
+                        </div>
+                    </div>
+                    @if (erroForm is not null)
+                    {
+                        <div class="alert alert-danger py-2 mt-2 mb-0">@erroForm</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary" @onclick="Fechar">Cancelar</button>
+                    <button class="btn btn-primary" @onclick="Salvar" disabled="@salvando">@(salvando ? "Salvando..." : "Salvar")</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private readonly ClienteFiltro filtro = new();
+    private PagedResult<ClienteDto> resultado = new();
+    private string busca = string.Empty;
+    private bool Ocupado = true;
+    private string? erro;
+    private string? erroForm;
+    private bool salvando;
+    private ClienteInput? editando;
+    private CancellationTokenSource? cts;
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        Ocupado = true;
+        erro = null;
+
+        try
+        {
+            resultado = await Api.ListarClientesAsync(filtro);
+        }
+        catch (ApiException e)
+        {
+            erro = e.Message;
+        }
+        finally
+        {
+            Ocupado = false;
+        }
+    }
+
+    private async Task AoBuscar(ChangeEventArgs e)
+    {
+        busca = e.Value?.ToString() ?? string.Empty;
+        filtro.Busca = busca;
+        filtro.Pagina = 1;
+
+        cts?.Cancel();
+        cts = new CancellationTokenSource();
+
+        try
+        {
+            await Task.Delay(350, cts.Token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        await CarregarAsync();
+    }
+
+    private async Task MudarPagina(int delta)
+    {
+        filtro.Pagina = Math.Max(1, filtro.Pagina + delta);
+        await CarregarAsync();
+    }
+
+    private void Novo() => editando = new ClienteInput();
+
+    private void Editar(ClienteDto c) => editando = new ClienteInput
+    {
+        Id = c.Id,
+        Nome = c.Nome,
+        Documento = c.Documento,
+        Telefone = c.Telefone,
+        Email = c.Email,
+        Endereco = c.Endereco,
+        Observacoes = c.Observacoes
+    };
+
+    private void Fechar() => editando = null;
+
+    private async Task Salvar()
+    {
+        if (editando is null) return;
+        if (string.IsNullOrWhiteSpace(editando.Nome))
+        {
+            erroForm = "Informe o nome do cliente.";
+            return;
+        }
+
+        salvando = true;
+        erroForm = null;
+
+        try
+        {
+            var salvo = await Api.SalvarClienteAsync(editando);
+            editando = null;
+            await CarregarAsync();
+        }
+        catch (ApiException e)
+        {
+            erroForm = e.MensagemFormatada;
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+}

@@ -99,8 +99,14 @@ app.UseStatusCodePagesWithReExecute("/nao-encontrado");
 app.UseStaticFiles();
 app.UseAntiforgery();
 
+// As paginas usam [Authorize], que o .NET 8 transforma em metadado do
+// endpoint. Como a sessao vive dentro do circuito do Blazor (nunca no
+// prerender estatico), a autorizacao por HTTP rejeitaria toda pagina
+// protegida com corpo vazio - tela branca. AllowAnonymous desliga essa
+// camada e deixa a checagem com o AuthorizeRouteView, no circuito.
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode()
+    .AllowAnonymous();
 
 // Proxy da logo: mantem a URL da API (que exige contexto de loja) fora do navegador.
 app.MapGet("/logo/{empresaId:guid}", async (

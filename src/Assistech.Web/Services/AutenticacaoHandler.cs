@@ -26,7 +26,10 @@ public sealed class AutenticacaoHandler : AuthenticationHandler<AuthenticationSc
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        Response.StatusCode = StatusCodes.Status200OK;
+        // A sessao vive em SessaoState, entao o desafio nao precisa cortar a
+        // resposta: quem chamador decide o status. Logar ajuda a diagnosticar
+        // porque o framework nao emite nenhum log proprio nesse caminho.
+        Logger.LogDebug("Desafio em {Path} (endpoint: {Endpoint})", Request.Path, Response.HttpContext.GetEndpoint()?.DisplayName);
         return Task.CompletedTask;
     }
 }

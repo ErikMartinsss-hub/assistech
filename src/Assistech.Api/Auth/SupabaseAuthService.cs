@@ -21,7 +21,7 @@ public enum MotivoFalha
     Indisponivel
 }
 
-public sealed record ResultadoAutenticacao(SupabaseSessao? Sessao, MotivoFalha Motivo);
+public sealed record ResultadoAutenticacao(SupabaseSessao? Sessao, MotivoFalha Motivo, string? Detalhe = null);
 
 /// <summary>
 /// Cliente da API de autenticacao do Supabase (GoTrue).
@@ -63,7 +63,7 @@ public sealed class SupabaseAuthService
         {
             // Sem este log, uma falha de rede virava "senha invalida" na tela.
             _log.LogError(erro, "Falha de rede ao falar com o Supabase Auth ({Host}).", _options.Url);
-            return new ResultadoAutenticacao(null, MotivoFalha.Indisponivel);
+            return new ResultadoAutenticacao(null, MotivoFalha.Indisponivel, "sem conexao com o Supabase");
         }
 
         using (resposta)
@@ -78,33 +78,57 @@ public sealed class SupabaseAuthService
                     (int)resposta.StatusCode,
                     corpo.Length > 300 ? corpo[..300] : corpo);
 
-                return new ResultadoAutenticacao(null, Classificar(resposta.StatusCode, corpo));
+                var falha = Classificar(resposta.StatusCode, corpo);
+                return new ResultadoAutenticacao(null, falha.Motivo, falha.Detalhe);
             }
 
             var conteudo = await resposta.Content.ReadFromJsonAsync<RespostaToken>(Json, ct).ConfigureAwait(false);
             if (conteudo is null || string.IsNullOrWhiteSpace(conteudo.AccessToken))
             {
                 _log.LogWarning("Supabase Auth respondeu {Status} sem access_token para {Email}.", (int)resposta.StatusCode, email);
-                return new ResultadoAutenticacao(null, MotivoFalha.Indisponivel);
+                return new ResultadoAutenticacao(null, MotivoFalha.Indisponivel, $"HTTP {(int)resposta.StatusCode} sem access_token");
             }
 
             return new ResultadoAutenticacao(new SupabaseSessao(conteudo.AccessToken, conteudo.ExpiresIn), MotivoFalha.Credenciais);
         }
     }
 
-    private static MotivoFalha Classificar(HttpStatusCode status, string corpo)
+    private static (MotivoFalha Motivo, string Detalhe) Classificar(HttpStatusCode status, string corpo)
     {
-        if (status == HttpStatusCode.TooManyRequests) return MotivoFalha.MuitasTentativas;
-        if (status == HttpStatusCode.Unauthorized) return MotivoFalha.ChaveInvalida;
+        // O status e o error_code do GoTrue sao a unica forma de saber o que houve de verdade.
+        var codigo = ExtrairCodigoErro(corpo);
+        var detalhe = $"HTTP {(int)status}{(codigo is null ? "" : $" {codigo}")}";
+
+        if (status == HttpStatusCode.TooManyRequests) return (MotivoFalha.MuitasTentativas, detalhe);
+        if (status == HttpStatusCode.Unauthorized) return (MotivoFalha.ChaveInvalida, detalhe);
 
         if (corpo.Contains("email_not_confirmed", StringComparison.OrdinalIgnoreCase)
             || corpo.Contains("Email not confirmed", StringComparison.OrdinalIgnoreCase))
-            return MotivoFalha.EmailNaoConfirmado;
+            return (MotivoFalha.EmailNaoConfirmado, detalhe);
 
-        if ((int)status >= 500) return MotivoFalha.Indisponivel;
-        if (status == HttpStatusCode.BadRequest) return MotivoFalha.Credenciais;
+        if ((int)status >= 500) return (MotivoFalha.Indisponivel, detalhe);
+        if (status == HttpStatusCode.BadRequest) return (MotivoFalha.Credenciais, detalhe);
 
-        return MotivoFalha.Indisponivel;
+        return (MotivoFalha.Indisponivel, detalhe);
+    }
+
+    private static string? ExtrairCodigoErro(string corpo)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(corpo);
+            foreach (var campo in (ReadOnlySpan<string>)["error_code", "code", "msg"])
+                if (doc.RootElement.ValueKind == JsonValueKind.Object
+                    && doc.RootElement.TryGetProperty(campo, out var valor)
+                    && valor.ValueKind == JsonValueKind.String)
+                    return valor.GetString();
+        }
+        catch (JsonException)
+        {
+            // corpo nao-JSON: o status ainda identifica o problema
+        }
+
+        return null;
     }
 
     public async Task<SupabaseUsuario?> ObterUsuarioAsync(string token, CancellationToken ct = default)

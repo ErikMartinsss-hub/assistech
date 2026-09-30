@@ -31,7 +31,9 @@ public static class AuthEndpoints
                     MotivoFalha.ChaveInvalida => ("Configuracao invalida: a chave do Supabase foi recusada.", StatusCodes.Status502BadGateway),
                     MotivoFalha.EmailNaoConfirmado => ("Confirme o e-mail desta conta antes de entrar.", StatusCodes.Status403Forbidden),
                     MotivoFalha.MuitasTentativas => ("Muitas tentativas. Aguarde alguns minutos e tente de novo.", StatusCodes.Status429TooManyRequests),
-                    MotivoFalha.Indisponivel => ("O servico de login esta indisponivel. Tente novamente.", StatusCodes.Status502BadGateway),
+                    // So neste caso o detalhe entra na tela: e o unico motivo que nao se explica sozinho.
+                    MotivoFalha.Indisponivel => ("O servico de login esta indisponivel. Tente novamente."
+                        + (autenticacao.Detalhe is null ? "" : $" ({autenticacao.Detalhe})"), StatusCodes.Status502BadGateway),
                     _ => ("E-mail ou senha invalidos.", StatusCodes.Status401Unauthorized)
                 };
 

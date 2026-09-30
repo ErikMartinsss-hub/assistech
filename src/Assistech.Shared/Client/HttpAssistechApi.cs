@@ -110,6 +110,13 @@ public sealed class HttpAssistechApi : IAssistechApi
         throw new ApiException(resposta.StatusCode, mensagem);
     }
 
+    private static string CorpoResumo(string corpo)
+    {
+        if (string.IsNullOrWhiteSpace(corpo)) return "(corpo vazio)";
+        var linhas = corpo.Replace("&quot;", "\"").Replace("\n", " ");
+        return linhas.Length <= 220 ? linhas : linhas[..220];
+    }
+
     // ------------------------------------------------------------------ auth
 
     public async Task<SessaoDto> LoginAsync(LoginRequest request, CancellationToken ct = default)
@@ -123,7 +130,7 @@ public sealed class HttpAssistechApi : IAssistechApi
             var corpo = await resposta.Content.ReadAsStringAsync().ConfigureAwait(false);
             var mensagem = resposta.StatusCode == HttpStatusCode.Unauthorized
                 ? "E-mail ou senha invalidos."
-                : "Nao foi possivel entrar. Verifique sua conexao.";
+                : $"Nao foi possivel entrar. Verifique sua conexao. [HTTP {(int)resposta.StatusCode}] {CorpoResumo(corpo)}";
             try
             {
                 using var doc = JsonDocument.Parse(corpo);

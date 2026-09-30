@@ -11,7 +11,10 @@ namespace Assistech.Desktop.Services;
 
 public sealed class DesktopOptions
 {
-    public string ApiBaseUrl { get; init; } = "http://localhost:5099";
+    /// <summary>API publicada. Nunca cair para localhost: o desktop nao sobe a API junto.</summary>
+    public const string ApiPadrao = "https://assistech.onrender.com";
+
+    public string ApiBaseUrl { get; init; } = ApiPadrao;
 }
 
 /// <summary>Sessao do usuario logado no app desktop.</summary>
@@ -82,11 +85,11 @@ public sealed class MarcaService
     {
         try
         {
-            return ConfigurationManager.AppSettings["ApiBaseUrl"] ?? "http://localhost:5099";
+            return ConfigurationManager.AppSettings["ApiBaseUrl"] ?? DesktopOptions.ApiPadrao;
         }
         catch
         {
-            return "http://localhost:5099";
+            return DesktopOptions.ApiPadrao;
         }
     }
 

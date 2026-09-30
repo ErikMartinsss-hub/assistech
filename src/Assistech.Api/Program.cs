@@ -161,6 +161,29 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", utc = DateTimeOffset
    .AllowAnonymous()
    .WithTags("Diagnostico");
 
+// O /health acima nao toca no banco. Este verifica de verdade a conexao com o
+// Postgres: e o que distingue "API no ar" de "API no ar e conseguir falar com o
+// Supabase" - falha de rede (host so IPv6, por exemplo) aparece aqui.
+app.MapGet("/health/db", async (IAssistechDb db, CancellationToken ct) =>
+{
+    try
+    {
+        await using var conn = await db.OpenAsync(ct);
+        await using var cmd = new Npgsql.NpgsqlCommand("select 1", conn);
+        await cmd.ExecuteScalarAsync(ct);
+        return Results.Ok(new { status = "ok", utc = DateTimeOffset.UtcNow });
+    }
+    catch (Exception erro)
+    {
+        app.Logger.LogError(erro, "Banco indisponivel.");
+        return Results.Json(
+            new { status = "erro", utc = DateTimeOffset.UtcNow },
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+})
+   .AllowAnonymous()
+   .WithTags("Diagnostico");
+
 // O schema e aplicado uma vez, na subida, quando Supabase:AplicarSchemaAutomaticamente = true.
 if (supabase.AplicarSchemaAutomaticamente)
 {

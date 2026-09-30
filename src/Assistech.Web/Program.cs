@@ -149,6 +149,13 @@ app.MapRazorComponents<App>()
 
 app.MapSessaoEndpoints();
 
+app.MapGet("/__config", (IOptions<AssistechWebOptions> opcoes) => Results.Ok(new
+{
+    apiBaseUrl = opcoes.Value.ApiBaseUrl,
+    apelido = opcoes.Value.ApiBaseUrl.Replace("https://", "").Replace("http://", ""),
+    ambiente = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "nulo"
+}));
+
 // Proxy da logo: mantem a URL da API (que exige contexto de loja) fora do navegador.
 app.MapGet("/logo/{empresaId:guid}", async (
     Guid empresaId,

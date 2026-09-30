@@ -115,6 +115,27 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStatusCodePagesWithReExecute("/nao-encontrado");
 app.UseStaticFiles();
+
+// Sem estes dois, nada popula HttpContext.User: o cookie era emitido pelo
+// /sessao/entrar e nunca lido, entao toda pagina voltava para /entrar.
+app.UseAuthentication();
+app.UseAuthorization();
+
+// O prerender com streaming zera o HttpContext antes dos componentes rodarem,
+// entao o SessaoState nao consegue ler o cookie de la. A sessao e lida aqui e
+// injetada no escopo da requisicao, que o render compartilha.
+app.Use(async (contexto, proximo) =>
+{
+    if (contexto.User.Identity?.IsAuthenticated == true)
+    {
+        var sessao = SessaoCookie.LerPrincipal(contexto.User);
+        if (sessao is not null)
+            contexto.RequestServices.GetRequiredService<SessaoState>().Entrar(sessao);
+    }
+
+    await proximo();
+});
+
 app.UseAntiforgery();
 
 // As paginas usam [Authorize], que o .NET 8 transforma em metadado do

@@ -42,7 +42,13 @@ public sealed class AppAuthenticationStateProvider : AuthenticationStateProvider
         try
         {
             var sessao = SessaoCookie.LerPrincipal((await tarefa).User);
+
+            // No prerender o framework entrega um principal anonimo. Tratar isso
+            // como "saiu" apagava a sessao recem-lida do cookie e jogava o
+            // usuario de volta para /entrar.
+            if (sessao is null && _sessao.Atual is not null) return;
             if (sessao?.Token == _sessao.Atual?.Token) return;
+
             _sessao.Sincronizar(sessao);
         }
         catch (Exception)

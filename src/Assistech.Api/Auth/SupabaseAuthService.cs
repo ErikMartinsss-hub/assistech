@@ -85,8 +85,20 @@ public sealed class SupabaseAuthService
             var conteudo = await resposta.Content.ReadFromJsonAsync<RespostaToken>(Json, ct).ConfigureAwait(false);
             if (conteudo is null || string.IsNullOrWhiteSpace(conteudo.AccessToken))
             {
-                _log.LogWarning("Supabase Auth respondeu {Status} sem access_token para {Email}.", (int)resposta.StatusCode, email);
-                return new ResultadoAutenticacao(null, MotivoFalha.Indisponivel, $"HTTP {(int)resposta.StatusCode} sem access_token");
+                // HTTP 200 sem token significa que o GoTrue respondeu outra coisa.
+                // Sem registrar o corpo, isso vira um mistério sem pista.
+                var corpo200 = await resposta.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                _log.LogWarning(
+                    "Supabase Auth respondeu {Status} sem access_token para {Email}. Content-Type={Tipo}. Corpo={Corpo}",
+                    (int)resposta.StatusCode,
+                    email,
+                    resposta.Content.Headers.ContentType?.ToString() ?? "(nenhum)",
+                    corpo200.Length > 500 ? corpo200[..500] : corpo200);
+
+                return new ResultadoAutenticacao(
+                    null,
+                    MotivoFalha.Indisponivel,
+                    $"HTTP {(int)resposta.StatusCode} sem access_token, corpo: {Resumir(corpo200)}");
             }
 
             return new ResultadoAutenticacao(new SupabaseSessao(conteudo.AccessToken, conteudo.ExpiresIn), MotivoFalha.Credenciais);
@@ -112,8 +124,17 @@ public sealed class SupabaseAuthService
         return (MotivoFalha.Indisponivel, detalhe);
     }
 
-    private static string? ExtrairCodigoErro(string corpo)
+    /// <summary>Troca por um resumo curto e sem token: o corpo pode ser o proprio token.</summary>
+    private static string Resumir(string corpo)
     {
+        if (string.IsNullOrWhiteSpace(corpo)) return "(vazio)";
+
+        var limpo = System.Text.RegularExpressions.Regex.Replace(corpo, @"eyJ[A-Za-z0-9_\-]{16,}", "<jwt>");
+        limpo = System.Text.RegularExpressions.Regex.Replace(limpo, @"\s+", " ").Trim();
+        return limpo.Length > 160 ? $"[{limpo.Length} bytes] {limpo[..160]}" : limpo;
+    }
+
+    private static string? ExtrairCodigoErro(string corpo)    {
         try
         {
             using var doc = JsonDocument.Parse(corpo);

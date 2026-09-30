@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Assistech.Data;
 using Microsoft.Extensions.Options;
 
@@ -191,14 +192,24 @@ public sealed class SupabaseAuthService
 
     private sealed class RespostaToken
     {
+        // O GoTrue usa snake_case. Sem o atributo, o System.Text.Json procura "accessToken"
+        // e devolve nulo: o login dava certo e a API jogava o token fora.
+        [JsonPropertyName("access_token")]
         public string? AccessToken { get; set; }
+
+        [JsonPropertyName("expires_in")]
         public int ExpiresIn { get; set; }
     }
 
     private sealed class RespostaUsuario
     {
+        [JsonPropertyName("id")]
         public string? Id { get; set; }
+
+        [JsonPropertyName("email")]
         public string? Email { get; set; }
+
+        [JsonPropertyName("user_metadata")]
         public Dictionary<string, string>? UserMetadata { get; set; }
     }
 }

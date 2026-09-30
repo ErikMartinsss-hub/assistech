@@ -157,6 +157,18 @@ app.MapClientesEndpoints();
 app.MapEquipamentosEndpoints();
 app.MapOrdensEndpoints();
 
+// A raiz da API nao tem pagina. Sem isto, quem digita assistech.onrender.com
+// no navegador leva um 404 e acha que o servico caiu.
+app.MapGet("/", () => Results.Ok(new
+{
+    servico = "Assistech API",
+    status = "ok",
+    web = "https://assistech-web.onrender.com",
+    diagnostico = new[] { "/health", "/health/db" }
+}))
+   .AllowAnonymous()
+   .WithTags("Diagnostico");
+
 app.MapGet("/health", () => Results.Ok(new { status = "ok", utc = DateTimeOffset.UtcNow }))
    .AllowAnonymous()
    .WithTags("Diagnostico");

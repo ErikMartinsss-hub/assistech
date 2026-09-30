@@ -8,6 +8,7 @@ using Assistech.Shared;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 
@@ -176,14 +177,32 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", utc = DateTimeOffset
 // O /health acima nao toca no banco. Este verifica de verdade a conexao com o
 // Postgres: e o que distingue "API no ar" de "API no ar e conseguir falar com o
 // Supabase" - falha de rede (host so IPv6, por exemplo) aparece aqui.
-app.MapGet("/health/db", async (IAssistechDb db, CancellationToken ct) =>
+app.MapGet("/health/db", async (
+    IAssistechDb db,
+    IOptions<SupabaseOptions> supabase,
+    CancellationToken ct) =>
 {
     try
     {
         await using var conn = await db.OpenAsync(ct);
-        await using var cmd = new Npgsql.NpgsqlCommand("select 1", conn);
-        await cmd.ExecuteScalarAsync(ct);
-        return Results.Ok(new { status = "ok", utc = DateTimeOffset.UtcNow });
+        await using var cmd = new Npgsql.NpgsqlCommand(
+            "select current_user, current_database(), coalesce(inet_server_addr()::text, 'pooler')", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await reader.ReadAsync(ct);
+
+        return Results.Ok(new
+        {
+            status = "ok",
+            utc = DateTimeOffset.UtcNow,
+            // Deixa claro qual projeto do Supabase esta em uso, sem expor segredo.
+            supabase = new Uri(supabase.Value.Url).Host,
+            banco = new
+            {
+                usuario = reader.GetString(0),
+                nome = reader.GetString(1),
+                endereco = reader.GetString(2)
+            }
+        });
     }
     catch (Exception erro)
     {

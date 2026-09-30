@@ -23,9 +23,20 @@ public static class AuthEndpoints
             if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Senha))
                 return Validacao.Falha("Informe e-mail e senha.");
 
-            var sessao = await supabase.AutenticarAsync(request.Email.Trim(), request.Senha, ct);
-            if (sessao is null)
-                return Results.Json(new { erro = "E-mail ou senha invalidos." }, statusCode: StatusCodes.Status401Unauthorized);
+            var autenticacao = await supabase.AutenticarAsync(request.Email.Trim(), request.Senha, ct);
+            if (autenticacao.Sessao is not { } sessao)
+            {
+                var (erro, status) = autenticacao.Motivo switch
+                {
+                    MotivoFalha.ChaveInvalida => ("Configuracao invalida: a chave do Supabase foi recusada.", StatusCodes.Status502BadGateway),
+                    MotivoFalha.EmailNaoConfirmado => ("Confirme o e-mail desta conta antes de entrar.", StatusCodes.Status403Forbidden),
+                    MotivoFalha.MuitasTentativas => ("Muitas tentativas. Aguarde alguns minutos e tente de novo.", StatusCodes.Status429TooManyRequests),
+                    MotivoFalha.Indisponivel => ("O servico de login esta indisponivel. Tente novamente.", StatusCodes.Status502BadGateway),
+                    _ => ("E-mail ou senha invalidos.", StatusCodes.Status401Unauthorized)
+                };
+
+                return Results.Json(new { erro }, statusCode: status);
+            }
 
             var usuario = await supabase.ObterUsuarioAsync(sessao.AccessToken, ct);
             if (usuario is null)

@@ -11,6 +11,18 @@ public sealed record SupabaseUsuario(Guid Id, string Email, string? Nome);
 
 public sealed record SupabaseSessao(string AccessToken, int ExpiresIn);
 
+/// <summary>Por que o login foi negado. A tela mostra o motivo certo, nao um genérico.</summary>
+public enum MotivoFalha
+{
+    Credenciais,
+    ChaveInvalida,
+    EmailNaoConfirmado,
+    MuitasTentativas,
+    Indisponivel
+}
+
+public sealed record ResultadoAutenticacao(SupabaseSessao? Sessao, MotivoFalha Motivo);
+
 /// <summary>
 /// Cliente da API de autenticacao do Supabase (GoTrue).
 /// A API do Assistech nunca expoe a service_role: apenas valida tokens.
@@ -33,17 +45,66 @@ public sealed class SupabaseAuthService
         _http.DefaultRequestHeaders.Add("apikey", _options.AnonKey);
     }
 
-    public async Task<SupabaseSessao?> AutenticarAsync(string email, string senha, CancellationToken ct = default)
+    public async Task<ResultadoAutenticacao> AutenticarAsync(string email, string senha, CancellationToken ct = default)
     {
         var url = "auth/v1/token?grant_type=password";
-        using var resposta = await _http.PostAsJsonAsync(url, new { email, password = senha }, Json, ct).ConfigureAwait(false);
 
-        if (!resposta.IsSuccessStatusCode) return null;
+        HttpResponseMessage resposta;
+        try
+        {
+            using var requisicao = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = JsonContent.Create(new { email, password = senha }, options: Json)
+            };
 
-        var corpo = await resposta.Content.ReadFromJsonAsync<RespostaToken>(Json, ct).ConfigureAwait(false);
-        if (corpo is null || string.IsNullOrWhiteSpace(corpo.AccessToken)) return null;
+            resposta = await _http.SendAsync(requisicao, ct).ConfigureAwait(false);
+        }
+        catch (HttpRequestException erro)
+        {
+            // Sem este log, uma falha de rede virava "senha invalida" na tela.
+            _log.LogError(erro, "Falha de rede ao falar com o Supabase Auth ({Host}).", _options.Url);
+            return new ResultadoAutenticacao(null, MotivoFalha.Indisponivel);
+        }
 
-        return new SupabaseSessao(corpo.AccessToken, corpo.ExpiresIn);
+        using (resposta)
+        {
+            if (!resposta.IsSuccessStatusCode)
+            {
+                // A senha nunca entra no log; o corpo do GoTrue mostra o motivo.
+                var corpo = await resposta.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                _log.LogWarning(
+                    "Supabase Auth recusou o login de {Email}: {Status} {Corpo}",
+                    email,
+                    (int)resposta.StatusCode,
+                    corpo.Length > 300 ? corpo[..300] : corpo);
+
+                return new ResultadoAutenticacao(null, Classificar(resposta.StatusCode, corpo));
+            }
+
+            var conteudo = await resposta.Content.ReadFromJsonAsync<RespostaToken>(Json, ct).ConfigureAwait(false);
+            if (conteudo is null || string.IsNullOrWhiteSpace(conteudo.AccessToken))
+            {
+                _log.LogWarning("Supabase Auth respondeu {Status} sem access_token para {Email}.", (int)resposta.StatusCode, email);
+                return new ResultadoAutenticacao(null, MotivoFalha.Indisponivel);
+            }
+
+            return new ResultadoAutenticacao(new SupabaseSessao(conteudo.AccessToken, conteudo.ExpiresIn), MotivoFalha.Credenciais);
+        }
+    }
+
+    private static MotivoFalha Classificar(HttpStatusCode status, string corpo)
+    {
+        if (status == HttpStatusCode.TooManyRequests) return MotivoFalha.MuitasTentativas;
+        if (status == HttpStatusCode.Unauthorized) return MotivoFalha.ChaveInvalida;
+
+        if (corpo.Contains("email_not_confirmed", StringComparison.OrdinalIgnoreCase)
+            || corpo.Contains("Email not confirmed", StringComparison.OrdinalIgnoreCase))
+            return MotivoFalha.EmailNaoConfirmado;
+
+        if ((int)status >= 500) return MotivoFalha.Indisponivel;
+        if (status == HttpStatusCode.BadRequest) return MotivoFalha.Credenciais;
+
+        return MotivoFalha.Indisponivel;
     }
 
     public async Task<SupabaseUsuario?> ObterUsuarioAsync(string token, CancellationToken ct = default)

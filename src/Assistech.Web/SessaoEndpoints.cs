@@ -13,10 +13,17 @@ public static class SessaoEndpoints
 {
     public static void MapSessaoEndpoints(this IEndpointRouteBuilder rotas)
     {
+        const string Cabecalho = "X-Assistech-Sessao";
+
         var grupo = rotas.MapGroup("/sessao");
 
         grupo.MapPost("/entrar", async (SessaoDto sessao, HttpContext contexto) =>
         {
+            // O header so chega num fetch do navegador: um site de terceiros
+            // precisaria de preflight de CORS, e este host nao responde preflight.
+            if (!contexto.Request.Headers.ContainsKey(Cabecalho))
+                return Results.BadRequest(new { erro = "Origem nao permitida." });
+
             if (string.IsNullOrWhiteSpace(sessao.Token))
                 return Results.BadRequest(new { erro = "Sessao invalida." });
 
@@ -34,6 +41,9 @@ public static class SessaoEndpoints
 
         grupo.MapPost("/sair", async (HttpContext contexto) =>
         {
+            if (!contexto.Request.Headers.ContainsKey(Cabecalho))
+                return Results.BadRequest(new { erro = "Origem nao permitida." });
+
             await contexto.SignOutAsync(SessaoCookie.Esquema);
             return Results.Ok();
         });

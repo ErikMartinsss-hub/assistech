@@ -169,8 +169,8 @@ public sealed class SupabaseAuthService
         var corpo = await resposta.Content.ReadFromJsonAsync<RespostaUsuario>(Json, ct).ConfigureAwait(false);
         if (corpo?.Id is null || string.IsNullOrWhiteSpace(corpo.Id)) return null;
 
-        var nome = corpo.UserMetadata?.GetValueOrProperty("full_name")
-                   ?? corpo.UserMetadata?.GetValueOrProperty("name")
+        var nome = corpo.UserMetadata?.Texto("full_name")
+                   ?? corpo.UserMetadata?.Texto("name")
                    ?? string.Empty;
 
         return new SupabaseUsuario(Guid.Parse(corpo.Id), corpo.Email ?? string.Empty, nome);
@@ -210,12 +210,18 @@ public sealed class SupabaseAuthService
         public string? Email { get; set; }
 
         [JsonPropertyName("user_metadata")]
-        public Dictionary<string, string>? UserMetadata { get; set; }
+        public Dictionary<string, JsonElement>? UserMetadata { get; set; }
     }
 }
 
 internal static class MetadataExtensions
 {
-    public static string? GetValueOrProperty(this Dictionary<string, string> metadata, string chave) =>
-        metadata.TryGetValue(chave, out var valor) && !string.IsNullOrWhiteSpace(valor) ? valor : null;
+    /// <summary>
+    /// O metadata vem como objeto livre: um numero ou lista quebraria o login.
+    /// So interessa o que for texto.
+    /// </summary>
+    public static string? Texto(this Dictionary<string, JsonElement> metadata, string chave) =>
+        metadata.TryGetValue(chave, out var valor) && valor.ValueKind == JsonValueKind.String
+            ? valor.GetString()
+            : null;
 }

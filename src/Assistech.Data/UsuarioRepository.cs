@@ -54,10 +54,10 @@ public sealed class UsuarioRepository : IUsuarioRepository
 
     public async Task<VinculoUsuario> CriarVinculoAsync(Guid empresaId, Guid usuarioAuthId, string nome, string email, PerfilUsuario perfil, CancellationToken ct = default)
     {
+        // RETURNING fica depois do ON CONFLICT: o Postgres nao aceita antes disso.
         const string sql = """
             insert into public.usuarios (empresa_id, usuario_id, nome, email, perfil)
             values ($1, $2, $3, $4, $5)
-            returning empresa_id, id, nome, coalesce(email, ''), perfil
             on conflict (usuario_id) do update
                set nome = excluded.nome, email = excluded.email, perfil = excluded.perfil
             returning empresa_id, id, nome, coalesce(email, ''), perfil
